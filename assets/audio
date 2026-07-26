@@ -1,0 +1,46 @@
+if (type === 'audio') {
+    return new Promise((resolve, reject) => {
+        const audio = new Audio();
+
+        audio.addEventListener('canplaythrough', () => {
+            this.assets[name] = audio;
+            resolve(audio);
+        }, { once: true });
+
+        audio.onerror = () => {
+            reject("Errore caricamento audio: " + src);
+        };
+
+        audio.src = src;
+    });
+}
+
+
+getAsset(name); {
+    return this.assets[name];
+}
+
+playSound(audioAsset); {
+    if (!audioAsset) return;
+    const soundClone = audioAsset.cloneNode();
+    soundClone.play().catch((err) => console.warn("Audio bloccato:", err));
+}
+
+playMusic(audioAsset, volume = 0.5); {
+    if (!audioAsset) return;
+    audioAsset.loop = true;
+    audioAsset.volume = volume;
+    audioAsset.play().catch(() => {
+        const startAudio = () => {
+            audioAsset.play();
+            window.removeEventListener('click', startAudio);
+            window.removeEventListener('keydown', startAudio);
+        };
+        window.addEventListener('click', startAudio);
+        window.addEventListener('keydown', startAudio);
+    });
+};
+
+
+
+

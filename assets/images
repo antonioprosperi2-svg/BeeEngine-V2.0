@@ -1,0 +1,18 @@
+loadAsset(type, name, src); {
+    if (type === 'image') {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+
+            img.onload = () => {
+                this.assets[name] = img;
+                resolve(img);
+            };
+
+            img.onerror = () => {
+                reject("Errore caricamento immagine: " + src);
+            };
+
+            img.src = src;
+        });
+    }
+}

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="data:,">
+    <title>Test Griglia BeeEngine</title>
+    <style>
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: #111;
+        }
+
+        canvas {
+            display: block;
+            margin: 20px auto;
+            background: #1c03f942;
+            border: 4px solid #ffd700;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Il rettangolo di gioco -->
+    <canvas id="testCanvas"></canvas>
+    <div id="controls" style="text-align:center; margin:10px;">
+        <button id="btnPause">Pausa</button>
+        <button id="btnResume">Riprendi</button>
+        <button id="btnStop">Stop</button>
+        <!-- Puoi aggiungere un pulsante dedicato se vuoi -->
+        <button id="btnAudio">🔊 Attiva Musica</button>
+    </div>
+    <script>
+        document.getElementById('btnPause').addEventListener('click', () => window.gioco && window.gioco.pause());
+        document.getElementById('btnResume').addEventListener('click', () => window.gioco && window.gioco.resume());
+        document.getElementById('btnStop').addEventListener('click', () => window.gioco && window.gioco.stop());
+        document.getElementById('btnAudio').addEventListener('click', () => {
+            const musica = window.gioco && window.gioco.getAsset('musicaSfondo');
+            const suono = window.gioco && window.gioco.getAsset('suonoCollisione');
+            if (musica) {
+                window.gioco.playMusic(musica, 0.4);
+            }
+        });
+    </script>
+    <!-- Il demo principale dei nemici è gestito in main.js -->
+    <!-- Lascialo così per vedere la demo dei nemici in movimento. -->
+    <script type="module" src="main.js"></script>
+</body>
+
+
+</html>
