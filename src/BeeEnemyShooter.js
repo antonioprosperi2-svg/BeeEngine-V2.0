@@ -14,13 +14,19 @@ export class BeeEnemyShooter extends BeeNemico {
         this.shootTimer = this.shootInterval;
         this.bulletSpeed = 250;
     }
-
+    /**
+     * Aggiorna la posizione e la logica del nemico ad ogni frame.
+     * @param {number} dt 
+     * @param {object} input 
+     * @param {Object} engine 
+     */
     update(dt, input, engine) {
         // Movimento nelle 4 direzioni (X e Y)
         this.x += this.vx * dt;
         this.y += this.vy * dt;
 
         // Limiti del campo di gioco (Rimbalzo sui bordi)
+
         const canvasW = engine ? engine.canvas.width : 800;
         const canvasH = engine ? engine.canvas.height : 600;
 
@@ -38,9 +44,12 @@ export class BeeEnemyShooter extends BeeNemico {
             this.shoot(engine);
         }
     }
-
+    /**
+     *  Calcola la direzione del proiettile in base al movimento attuale (o verso il basso se fermo)
+     * @param {object} engine 
+     */
     shoot(engine) {
-        // Calcola la direzione del proiettile in base al movimento attuale (o verso il basso se fermo)
+
         let bulletVx = 0;
         let bulletVy = this.bulletSpeed;
 
@@ -56,12 +65,17 @@ export class BeeEnemyShooter extends BeeNemico {
         const bulletY = this.y + this.height / 2 - 4;
 
         const bullet = new BeeBullet(bulletX, bulletY, bulletVx, bulletVy, 10, 10);
-        
+
         if (engine && typeof engine.addEntity === 'function') {
             engine.addEntity(bullet);
         }
     }
-
+    /**
+     * Disegna il nemico sul canvas (usa la texture se presente, altrimenti la grafica di fallback).
+     * @param {CanvasRenderingContext2D} ctx Il contesto 2D del Canvas su cui disegnare
+     * @param {object} engine L'istanza del motore di gioco per recuperare gli asset
+     * @returns {void} Nessun valore restituito
+     */
     draw(ctx, engine) {
         // 1. Se lo sviluppatore ha impostato una texture (immagine), la disegna
         const texture = (engine && this.textureKey) ? engine.getAsset(this.textureKey) : null;

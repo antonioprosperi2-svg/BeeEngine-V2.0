@@ -9,7 +9,7 @@ La versione 2.0 introduce un'architettura professionale pronta per la distribuzi
 ## 📁 Struttura del Progetto Aggiornata
 
 ```text
-BeeEngine V1.0/
+BeeEngine V2.0/
 ├── index.html                  # Punto di ingresso HTML e configurazione Canvas
 ├── main.js                     # Demo, gestione scene e punto d'avvio del gioco
 ├── BeeEngine.js                # Il CUORE del motore (Core Loop & System Coordinator)
@@ -91,4 +91,4 @@ gioco.collisions.run();
 
 ---
 *BeeEngine è sviluppato con passione per rendere lo sviluppo di giochi 2D in JavaScript semplice, performante ed elegante!* 🐝
-cioa
+ciao

@@ -1,12 +1,12 @@
-import { 
-    BeeEngine, 
-    BeePlayer, 
-    BeeNemico, 
-    BeeEnemyShooter, 
-    BeeCollectible, 
-    BeePlatform, 
-    BeeMenuScene, 
-    BeeText 
+import {
+    BeeEngine,
+    BeePlayer,
+    BeeNemico,
+    BeeEnemyShooter,
+    BeeCollectible,
+    BeePlatform,
+    BeeMenuScene,
+    BeeText
 } from './BeeEngine.js';
 
 // 1. Inizializzazione Motore su Canvas 800x600 con AutoResize

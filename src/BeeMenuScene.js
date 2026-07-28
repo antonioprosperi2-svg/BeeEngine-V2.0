@@ -75,6 +75,6 @@ export class BeeMenuScene {
         ctx.fillStyle = "#555555";
         ctx.font = "12px monospace";
         ctx.textAlign = "right";
-        ctx.fillText("Powered by BeeEngine v1.0", ctx.canvas.width - 20, ctx.canvas.height - 20);
+        ctx.fillText("Powered by BeeEngine v2.0", ctx.canvas.width - 20, ctx.canvas.height - 20);
     }
 }
