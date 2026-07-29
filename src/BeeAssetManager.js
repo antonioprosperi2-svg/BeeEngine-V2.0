@@ -1,3 +1,7 @@
+/** 🌟* Classe BeeAssetManager: Gestisce il caricamento centralizzato di tutte le risorse.
+ * Carica in memoria file multimediali (immagini, sprite, tracce audio ed effetti sonori) 
+ * prima dell'avvio del gioco, rendendoli subito accessibili a tutte le altre entità.
+ */
 export class BeeAssetManager {
     constructor() {
         this.images = new Map();
@@ -78,7 +82,4 @@ export class BeeAssetManager {
         clone.play();
     }
 }
-/** 🌟* Classe BeeAssetManager: Gestisce il caricamento centralizzato di tutte le risorse.
- * Carica in memoria file multimediali (immagini, sprite, tracce audio ed effetti sonori) 
- * prima dell'avvio del gioco, rendendoli subito accessibili a tutte le altre entità.
- */
+
