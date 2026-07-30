@@ -13,11 +13,15 @@ export class BeeInput {
         };
 
         window.addEventListener('keydown', (e) => {
+            if (!this.keys[e.code]) this.pressed[e.code] = true;
+            this.keys[e.code] = true;
+
             if (!this.keys[e.key]) this.pressed[e.key] = true;
             this.keys[e.key] = true;
         });
 
         window.addEventListener('keyup', (e) => {
+            this.keys[e.code] = false;
             this.keys[e.key] = false;
         });
 

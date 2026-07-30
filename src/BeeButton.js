@@ -43,7 +43,7 @@ export class BeeButton extends BeeEntity {
         color = "white",
         onClick = null
     } = {}) {
-        super({ x, y, width, height });
+        super(x, y, width, height);
 
         this.text = text;
         this.font = font;

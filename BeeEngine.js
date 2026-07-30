@@ -1,3 +1,5 @@
+import { BeeAnimatedSprite } from './src/BeeAnimatedSprite.js';
+import { BeeSpriteSheet } from './src/BeeSpriteSheet.js';
 import { BeeCollectible } from './src/BeeCollectible.js';
 import { BeeSceneManager } from './src/BeeSceneManager.js';
 import { BeeSave } from './src/BeeSave.js';
@@ -402,7 +404,9 @@ export {
     BeeEnemyShooter,
     BeePlatform,
     BeeCollectible,
-    BeeCollisionSystem
+    BeeCollisionSystem,
+    BeeSpriteSheet,
+    BeeAnimatedSprite
 };
 
 /** 🌟 Il ruolo di BeeEngine
