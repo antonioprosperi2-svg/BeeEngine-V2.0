@@ -9,7 +9,7 @@ export class BeeTilemap extends BeeEntity {
         tileset = null,
         tilesetColumns = 1
     } = {}) {
-        super({ x, y });
+        super(x, y);
 
         this.tiles = tiles;
         this.tileSize = tileSize;

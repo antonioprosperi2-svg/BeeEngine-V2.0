@@ -4,7 +4,7 @@ export class BeeParticleSystem extends BeeEntity {
         x = 0,
         y = 0
     } = {}) {
-        super({ x, y });
+        super(x, y);
 
         this.particles = [];
     }
