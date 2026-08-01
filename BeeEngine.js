@@ -54,6 +54,13 @@ export class BeeEngine {
             this.touchControls = new BeeTouchControls(this.canvas, this.input);
         }
     }
+    createSpriteSheet(image, frameWidth, frameHeight, config = {}) {
+        return new BeeSpriteSheet(image, frameWidth, frameHeight, config);
+    }
+
+    createAnimatedSprite(spriteSheet, config = {}) {
+        return new BeeAnimatedSprite(spriteSheet, config);
+    }
     enableAutoResize(baseWidth = this.canvas.width, baseHeight = this.canvas.height, reservedHeight = 80) {
         this.canvas.style.display = 'block';
         this.canvas.style.margin = '0 auto';

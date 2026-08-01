@@ -1,123 +1,64 @@
 export class BeeAnimatedSprite {
-    constructor(spriteSheet, options = {}) {
-        this.spriteSheet = spriteSheet;
+    constructor(spriteSheet, config = {}) {
+        this.sheet = spriteSheet;
+        this.animations = config.animations || {};
+        this.currentAnimName = config.animation || Object.keys(this.animations)[0];
 
-        this.animations = {};
-
-        this.currentAnimation = null;
         this.currentFrameIndex = 0;
-        this.accumulator = 0;
-
-        this.playing = options.autoplay ?? true;
-
-        if (options.animations) {
-            for (const animationName in options.animations) {
-                this.addAnimation(animationName, options.animations[animationName]);
-            }
-        } else {
-            this.addAnimation("default", {
-                frames: this.createFrameArray(0, spriteSheet.frameCount - 1),
-                fps: options.fps ?? 10,
-                loop: options.loop ?? true
-            });
-        }
-
-        const firstAnimation = options.animation ?? Object.keys(this.animations)[0];
-        this.play(firstAnimation, true);
+        this.timer = 0;
+        this.flipX = false;
     }
 
-    createFrameArray(from, to) {
-        const frames = [];
-
-        if (from <= to) {
-            for (let i = from; i <= to; i++) {
-                frames.push(i);
-            }
-        } else {
-            for (let i = from; i >= to; i--) {
-                frames.push(i);
-            }
-        }
-
-        return frames;
-    }
-
-    addAnimation(name, options = {}) {
-        this.animations[name] = {
-            frames: options.frames ?? [0],
-            fps: options.fps ?? 10,
-            loop: options.loop ?? true
-        };
-    }
-
-    play(animationName = this.currentAnimation, reset = false) {
-        if (!this.animations[animationName]) {
-            throw new Error(`BeeAnimatedSprite: animazione "${animationName}" non trovata.`);
-        }
-
-        if (this.currentAnimation !== animationName || reset) {
-            this.currentAnimation = animationName;
+    play(name) {
+        if (this.currentAnimName !== name && this.animations[name]) {
+            this.currentAnimName = name;
             this.currentFrameIndex = 0;
-            this.accumulator = 0;
+            this.timer = 0;
         }
-
-        this.playing = true;
-    }
-
-    pause() {
-        this.playing = false;
-    }
-
-    stop() {
-        this.playing = false;
-        this.currentFrameIndex = 0;
-        this.accumulator = 0;
     }
 
     update(dt) {
-        if (!this.playing) return;
+        const anim = this.animations[this.currentAnimName];
+        if (!anim || !anim.frames || anim.frames.length === 0) return;
 
-        const animation = this.animations[this.currentAnimation];
+        const fps = anim.fps || 8;
+        const frameDuration = 1 / fps;
 
-        if (!animation) return;
-        if (animation.frames.length <= 1) return;
-        if (animation.fps <= 0) return;
+        this.timer += dt;
 
-        const frameDuration = 1 / animation.fps;
+        if (this.timer >= frameDuration) {
+            this.timer -= frameDuration;
 
-        this.accumulator += dt;
-
-        while (this.accumulator >= frameDuration) {
-            this.accumulator -= frameDuration;
-            this.currentFrameIndex++;
-
-            if (this.currentFrameIndex >= animation.frames.length) {
-                if (animation.loop) {
-                    this.currentFrameIndex = 0;
-                } else {
-                    this.currentFrameIndex = animation.frames.length - 1;
-                    this.playing = false;
-                    break;
-                }
+            if (anim.loop) {
+                this.currentFrameIndex = (this.currentFrameIndex + 1) % anim.frames.length;
+            } else {
+                this.currentFrameIndex = Math.min(this.currentFrameIndex + 1, anim.frames.length - 1);
             }
         }
     }
 
     draw(ctx, x, y, options = {}) {
-        const animation = this.animations[this.currentAnimation];
+        const anim = this.animations[this.currentAnimName];
+        if (!anim) return;
 
-        if (!animation) return;
+        const frameToDraw = anim.frames[this.currentFrameIndex];
+        const width = options.width || this.sheet.frameWidth;
+        const height = options.height || this.sheet.frameHeight;
 
-        const frame = animation.frames[this.currentFrameIndex];
+        ctx.save(); // 1. Salva lo stato normale del canvas
 
-        this.spriteSheet.drawFrame(ctx, frame, x, y, options);
-    }
+        if (this.flipX) {
+            // 2. Sposta l'origine al bordo destro dell'immagine e specchia l'asse X
+            ctx.translate(x + width, y);
+            ctx.scale(-1, 1);
 
-    getCurrentFrame() {
-        const animation = this.animations[this.currentAnimation];
+            // 3. Disegna a coordinate (0, 0) perché l'origine è già stata spostata
+            this.sheet.drawFrame(ctx, frameToDraw, 0, 0, width, height);
+        } else {
+            // Disegno normale senza specchio
+            this.sheet.drawFrame(ctx, frameToDraw, x, y, width, height);
+        }
 
-        if (!animation) return 0;
-
-        return animation.frames[this.currentFrameIndex];
+        ctx.restore(); // 4. Ripristina lo stato per le altre entità
     }
 }

@@ -6,7 +6,9 @@ import {
     BeeCollectible,
     BeePlatform,
     BeeMenuScene,
-    BeeText
+    BeeText,
+    BeeSpriteSheet,
+    BeeAnimatedSprite
 } from './BeeEngine.js';
 
 // 1. Inizializzazione Motore su Canvas 800x600 con AutoResize
@@ -30,10 +32,31 @@ const gameScene = {
         this.entities = [];
 
         // Giocatore in modalità Platformer (Gravità + Salto)
+
         this.giocatore = new BeePlayer(100, 300, 40, 40, 'ape');
         this.giocatore.mode = 'platformer';
         this.giocatore.score = 0;
         this.giocatore.lives = 3;
+        const apeImg = gioco.getAsset('ape');
+
+        console.log("🐝 Immagine ape:", apeImg.width, apeImg.height);
+
+        // 1. Se i 4 frame sono tutti in fila sulla stessa riga (32x128):
+        // 1. Se i 4 frame sono tutti in fila sulla stessa riga (32x128):
+        const apeSheet = gioco.createSpriteSheet(apeImg, 32, 128, {
+            framesPerRow: 4,
+            frameCount: 4
+        });
+        this.giocatore.sprite = gioco.createAnimatedSprite(apeSheet, {
+            animation: "fly",
+            animations: {
+                fly: {
+                    frames: [0, 1, 2, 3],
+                    fps: 8,
+                    loop: true
+                }
+            }
+        });
 
         // Piattaforme solide
         const pavimento = new BeePlatform(0, 440, 800, 40, '#2e7d32'); // Terreno principale
@@ -83,12 +106,56 @@ const gameScene = {
     },
 
     update(dt, input) {
-        // Aggiorna tutte le entità della scena
+        if (!input || !this.giocatore) return;
+
+        // ==========================================
+        // 1. MOVIMENTO E DIREZIONE DELL'APE
+        // ==========================================
+
+        // Movimento a Sinistra
+        if (input.isPressed("ArrowLeft") || input.isPressed("KeyA")) {
+            this.giocatore.vx = -200; // Imposta la velocità verso sinistra
+            if (this.giocatore.sprite) {
+                // Se flipX non funziona sul tuo motore, prova a cambiare flipX con scaleX = -1
+                this.giocatore.sprite.flipX = true;
+            }
+        }
+        // Movimento a Destra
+        else if (input.isPressed("ArrowRight") || input.isPressed("KeyD")) {
+            this.giocatore.vx = 200;  // Imposta la velocità verso destra
+            if (this.giocatore.sprite) {
+                // Se flipX non funziona sul tuo motore, prova a cambiare flipX con scaleX = 1
+                this.giocatore.sprite.flipX = false;
+            }
+        }
+        // Fermo
+        else {
+            this.giocatore.vx = 0;    // Ferma l'ape se non premi nulla
+        }
+
+        // Salto (Spazio o Freccia Su o W) - Salta solo se è a terra
+        if ((input.wasPressed("Space") || input.wasPressed("ArrowUp") || input.wasPressed("KeyW")) && this.giocatore.sulTerreno) {
+            this.giocatore.vy = -400; // Spinta verso l'alto
+        }
+
+        // ==========================================
+        // 2. IL TUO CODICE ORIGINALE (Invariato)
+        // ==========================================
+
+        // Aggiorna le entità
         for (let i = 0; i < this.entities.length; i++) {
             const e = this.entities[i];
             if (e.update) e.update(dt, input, gioco);
         }
 
+        // Aggiorna gli sprite delle entità
+        for (const e of this.entities) {
+            if (e.sprite && e.sprite.update) {
+                e.sprite.update(dt);
+            }
+        }
+
+        // Gestione collisioni
         gioco.collisions.run();
 
         // Limiti Mappa Orizzontali
@@ -108,21 +175,28 @@ const gameScene = {
             }
         }
 
-        // Pulizia entità distrutte (es. proiettili)
+        // Pulizia entità distrutte
         this.entities = this.entities.filter(e => !e.destroyed);
     },
 
+
     draw(ctx) {
-        // Disegna Sfondo
         ctx.fillStyle = '#121629';
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-        // Disegna tutte le entità della scena
         for (const e of this.entities) {
-            gioco.drawEntity(ctx, e);
+            // 🐝 Se l'oggetto ha uno sprite animato, lo disegna il main!
+            if (e.sprite && typeof e.sprite.draw === 'function') {
+                e.sprite.draw(ctx, e.x, e.y, {
+                    width: e.width,
+                    height: e.height
+                });
+            } else {
+                // Altrimenti usa il disegno standard del motore
+                gioco.drawEntity(ctx, e);
+            }
         }
 
-        // Disegna la barra HUD del Punteggio e Vite in alto
         BeeText.drawHUD(ctx, this.giocatore.score, this.giocatore.lives, 'BEE ENGINE PLATFORMER');
     }
 };
@@ -167,7 +241,7 @@ gioco.scenes.add('gameOver', gameOverScene);
 // 4. Caricamento Asset e Avvio dalla Scena 'menu'
 gioco.loadManifest([
     { type: 'image', name: 'ape', src: 'assets/bee_a.png' },
-    { type: 'image', name: 'mieleImg', src: 'assets/hud_coin.png' },
+    { type: 'image', name: 'mieleImg', src: 'assets/hud_coin.png', width: 32, height: 32 },
     { type: 'audio', name: 'musicaSfondo', src: 'assets/bgm_action_4.mp3' },
     { type: 'audio', name: 'suonoCollisione', src: 'assets/completetask_0.mp3' }
 ]).then(() => {
