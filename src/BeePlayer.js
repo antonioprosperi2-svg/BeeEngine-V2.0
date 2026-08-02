@@ -91,26 +91,39 @@ export class BeePlayer extends BeeEntity {
     }
 
     draw(ctx, engine) {
+        // 1. PRIMA DI TUTTO: Se ha uno sprite animato, disegna SOLO quello ed esci!
+        if (this.sprite) {
+            // Gestione opzionale della direzione (flipX)
+            if (this.vx < 0) this.sprite.flipX = true;
+            if (this.vx > 0) this.sprite.flipX = false;
+
+            this.sprite.draw(ctx, this.x, this.y, { width: this.width, height: this.height });
+            return; // Exit fondamentale: non disegna il pallino giallo!
+        }
+
+        // 2. Se ha una singola texture immagine standard
         const texture = (engine && this.textureKey) ? engine.getAsset(this.textureKey) : null;
         if (texture) {
             ctx.drawImage(texture, this.x, this.y, this.width, this.height);
-        } else {
-            // Grafica vettoriale per l'ape giocabile
-            ctx.fillStyle = "#FFD700"; // Giallo miele
-            ctx.beginPath();
-            ctx.arc(this.x + this.width / 2, this.y + this.height / 2, this.width / 2, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Strisce nere dell'ape
-            ctx.fillStyle = "#000000";
-            ctx.fillRect(this.x + 10, this.y + 8, 5, 24);
-            ctx.fillRect(this.x + 22, this.y + 8, 5, 24);
-
-            // Occhio
-            ctx.fillStyle = "#FFFFFF";
-            ctx.beginPath();
-            ctx.arc(this.x + 30, this.y + 14, 4, 0, Math.PI * 2);
-            ctx.fill();
+            return;
         }
+
+        // 3. FALLBACK VETTORIALE (Usato solo se NON ci sono sprite né immagini)
+        ctx.fillStyle = "#FFD700"; // Giallo miele
+        ctx.beginPath();
+        ctx.arc(this.x + this.width / 2, this.y + this.height / 2, this.width / 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Strisce nere dell'ape
+        ctx.fillStyle = "#000000";
+        ctx.fillRect(this.x + 10, this.y + 8, 5, 24);
+        ctx.fillRect(this.x + 22, this.y + 8, 5, 24);
+
+        // Occhio
+        ctx.fillStyle = "#FFFFFF";
+        ctx.beginPath();
+        ctx.arc(this.x + 30, this.y + 14, 4, 0, Math.PI * 2);
+        ctx.fill();
     }
 }
+

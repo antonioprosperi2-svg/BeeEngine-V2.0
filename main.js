@@ -39,25 +39,28 @@ const gameScene = {
         this.giocatore.lives = 3;
         const apeImg = gioco.getAsset('ape');
 
-        console.log("🐝 Immagine ape:", apeImg.width, apeImg.height);
 
-        // 1. Se i 4 frame sono tutti in fila sulla stessa riga (32x128):
-        // 1. Se i 4 frame sono tutti in fila sulla stessa riga (32x128):
-        const apeSheet = gioco.createSpriteSheet(apeImg, 32, 128, {
-            framesPerRow: 4,
-            frameCount: 4
+
+        // 1. Prendi la grande immagine dell'Atlas caricata nel manifest
+        const megaSheetImg = gioco.getAsset('spritesheet_totale');
+
+        // Ogni casella di questo sheet è 128x128
+        const frameW = 128;
+        const frameH = 128;
+
+        const apeSheet = new BeeSpriteSheet(megaSheetImg, frameW, frameH, {
+            col: 3, // 8ª colonna (l'ultima a destra)
+            row: 3, // 1ª riga in alto
+            framesPerRow: 1, // Le apette sono una sotto l'altra, non affiancate!
+            frameCount: 2
         });
-        this.giocatore.sprite = gioco.createAnimatedSprite(apeSheet, {
+
+        this.giocatore.sprite = new BeeAnimatedSprite(apeSheet, {
             animation: "fly",
             animations: {
-                fly: {
-                    frames: [0, 1, 2, 3],
-                    fps: 8,
-                    loop: true
-                }
+                fly: { frames: [0, 1], fps: 4, loop: true }
             }
         });
-
         // Piattaforme solide
         const pavimento = new BeePlatform(0, 440, 800, 40, '#2e7d32'); // Terreno principale
         const p1 = new BeePlatform(150, 320, 180, 20, '#f57f17');
@@ -185,14 +188,11 @@ const gameScene = {
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
         for (const e of this.entities) {
-            // 🐝 Se l'oggetto ha uno sprite animato, lo disegna il main!
-            if (e.sprite && typeof e.sprite.draw === 'function') {
-                e.sprite.draw(ctx, e.x, e.y, {
-                    width: e.width,
-                    height: e.height
-                });
+            // Se l'entità ha uno sprite animato, disegna SOLO lo sprite!
+            if (e.sprite) {
+                e.sprite.draw(ctx, e.x, e.y, { width: e.width, height: e.height });
             } else {
-                // Altrimenti usa il disegno standard del motore
+                // Solo se NON ha uno sprite, disegna la forma base
                 gioco.drawEntity(ctx, e);
             }
         }
@@ -240,7 +240,7 @@ gioco.scenes.add('gameOver', gameOverScene);
 
 // 4. Caricamento Asset e Avvio dalla Scena 'menu'
 gioco.loadManifest([
-    { type: 'image', name: 'ape', src: 'assets/bee_a.png' },
+    { type: 'image', name: 'spritesheet_totale', src: 'assets/spritesheet-enemies-double.png' },
     { type: 'image', name: 'mieleImg', src: 'assets/hud_coin.png', width: 32, height: 32 },
     { type: 'audio', name: 'musicaSfondo', src: 'assets/bgm_action_4.mp3' },
     { type: 'audio', name: 'suonoCollisione', src: 'assets/completetask_0.mp3' }

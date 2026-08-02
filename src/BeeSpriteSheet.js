@@ -1,28 +1,36 @@
+// src/BeeSpriteSheet.js
 export class BeeSpriteSheet {
-    constructor(image, frameWidth, frameHeight, config = {}) {
+    constructor(image, frameWidth, frameHeight, options = {}) {
         this.image = image;
         this.frameWidth = frameWidth;
         this.frameHeight = frameHeight;
-        this.framesPerRow = config.framesPerRow || 1;
-        this.frameCount = config.frameCount || 1;
+
+        // Se l'utente specifica colonna e riga, calcoliamo l'offset in automatico!
+        if (options.col !== undefined && options.row !== undefined) {
+            this.offsetX = options.col * frameWidth;
+            this.offsetY = options.row * frameHeight;
+        } else {
+            // Altrimenti usiamo gli offset in pixel passati a mano (o 0 di default)
+            this.offsetX = options.offsetX || 0;
+            this.offsetY = options.offsetY || 0;
+        }
+
+        this.framesPerRow = options.framesPerRow || 1;
+        this.frameCount = options.frameCount || 1;
     }
 
-    // Ritaglia e disegna il frame (0, 1, 2, 3...) dall'immagine originale
-    drawFrame(ctx, frameIndex, x, y, destWidth, destHeight) {
-        if (!this.image) return;
-
+    drawFrame(ctx, frameIndex, destX, destY, destW, destH) {
         const col = frameIndex % this.framesPerRow;
         const row = Math.floor(frameIndex / this.framesPerRow);
 
-        const srcX = col * this.frameWidth;
-        const srcY = row * this.frameHeight;
+        // Aggiungi l'offset qui per prendere l'ape dal foglio grande!
+        const sourceX = this.offsetX + (col * this.frameWidth);
+        const sourceY = this.offsetY + (row * this.frameHeight);
 
         ctx.drawImage(
             this.image,
-            srcX, srcY,
-            this.frameWidth, this.frameHeight,
-            x, y,
-            destWidth || this.frameWidth, destHeight || this.frameHeight
+            sourceX, sourceY, this.frameWidth, this.frameHeight, // Ritaglio dal Mega-Sheet
+            destX, destY, destW, destH                          // Posizione sul Canvas
         );
     }
 }
