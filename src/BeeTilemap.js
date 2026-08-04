@@ -1,144 +1,93 @@
 import { BeeEntity } from './BeeEntity.js';
-export class BeeTilemap extends BeeEntity {
-    constructor({
-        x = 0,
-        y = 0,
-        tiles = [],
-        tileSize = 32,
-        solidTiles = [],
-        tileset = null,
-        tilesetColumns = 1
-    } = {}) {
-        super(x, y);
 
-        this.tiles = tiles;
-        this.tileSize = tileSize;
-        this.solidTiles = solidTiles;
-
-        this.tileset = tileset;
-        this.tilesetColumns = tilesetColumns;
-
-        this.rows = tiles.length;
-        this.cols = (tiles[0] && tiles[0].length) ? tiles[0].length : 0;
+export class BeeTilemap {
+    constructor() {
+        this.tileSize = 32;
+        this.cols = 0;
+        this.rows = 0;
+        this.tileset = null;       // L'immagine del foglio di blocchi (PNG)
+        this.tilesetColumns = 0;  // Quanti blocchi ci sono per riga nel PNG
+        this.layers = [];
     }
 
-    getTile(col, row) {
-        if (row < 0 || row >= this.rows) return null;
-        if (col < 0 || col >= this.cols) return null;
-
-        return this.tiles[row][col];
-    }
-
-    worldToTile(px, py) {
-        const col = Math.floor((px - this.x) / this.tileSize);
-        const row = Math.floor((py - this.y) / this.tileSize);
-
-        return { col, row };
-    }
-
-    isSolidTile(col, row) {
-        const tile = this.getTile(col, row);
-
-        if (tile === null) return false;
-
-        return this.solidTiles.includes(tile);
-    }
-
-    isSolidAtPixel(px, py) {
-        const { col, row } = this.worldToTile(px, py);
-        return this.isSolidTile(col, row);
-    }
-
-    entityCollides(entity) {
-        if (!entity.collider) return false;
-
-        const c = entity.collider;
-
-        const left = c.x;
-        const right = c.x + c.width;
-        const top = c.y;
-        const bottom = c.y + c.height;
-
-        return (
-            this.isSolidAtPixel(left, top) ||
-            this.isSolidAtPixel(right, top) ||
-            this.isSolidAtPixel(left, bottom) ||
-            this.isSolidAtPixel(right, bottom)
-        );
-    }
-
-    draw(ctx, engine) {
-        if (!this.visible) return;
-
-        const mapW = this.cols * this.tileSize;
-        const mapH = this.rows * this.tileSize;
-
-        if (engine && !engine.isRectVisibleInView(this.x, this.y, mapW, mapH)) {
+    /**
+     * Carica i dati dal JSON e la texture del tileset
+     * @param {Object} mapData - Oggetto JSON della mappa
+     * @param {HTMLImageElement} tilesetImage - Immagine del tileset caricata da BeeAssetManager
+     */
+    loadJSON(jsonMap, tilesetImage) {
+        if (!jsonMap) {
+            console.error("❌ ERRORE: jsonMap passato a BeeTilemap è undefined!");
             return;
         }
+        this.tileset = tilesetImage;
+        this.tileSize = jsonMap.tilewidth || 32;
+        this.cols = jsonMap.width;
+        this.rows = jsonMap.height;
 
-        let viewLeft = 0;
-        let viewTop = 0;
-        let viewRight = engine ? engine.canvas.width : Infinity;
-        let viewBottom = engine ? engine.canvas.height : Infinity;
-
-        if (engine && engine.camera) {
-            const view = engine.camera.getViewBounds();
-            viewLeft = view.x;
-            viewTop = view.y;
-            viewRight = view.x + view.width;
-            viewBottom = view.y + view.height;
+        if (jsonMap.layers && jsonMap.layers[0]) {
+            this.data = jsonMap.layers[0].data;
         }
+    }
 
-        const startCol = Math.max(0, Math.floor((viewLeft - this.x) / this.tileSize));
-        const endCol = Math.min(this.cols - 1, Math.floor((viewRight - this.x) / this.tileSize));
-        const startRow = Math.max(0, Math.floor((viewTop - this.y) / this.tileSize));
-        const endRow = Math.min(this.rows - 1, Math.floor((viewBottom - this.y) / this.tileSize));
+    /**
+     * Disegna la mappa gestendo la Camera e il Culling visivo
+     */
+    render(ctx, camera) {
+        if (!this.tileset || this.layers.length === 0) return;
 
-        for (let row = startRow; row <= endRow; row++) {
-            for (let col = startCol; col <= endCol; col++) {
-                const tile = this.tiles[row][col];
+        // --- CULLING VISIVO: Calcola solo i tile visibili nella viewport ---
+        const startCol = Math.max(0, Math.floor(camera.x / this.tileSize));
+        const endCol = Math.min(this.cols, Math.ceil((camera.x + camera.width) / this.tileSize));
 
-                if (tile === 0) continue;
+        const startRow = Math.max(0, Math.floor(camera.y / this.tileSize));
+        const endRow = Math.min(this.rows, Math.ceil((camera.y + camera.height) / this.tileSize));
 
-                const drawX = this.x + col * this.tileSize;
-                const drawY = this.y + row * this.tileSize;
+        // Ciclo su ogni livello (layer) della mappa
+        for (let l = 0; l < this.layers.length; l++) {
+            const layer = this.layers[l];
+            const data = layer.data;
 
-                if (engine && !engine.isRectVisibleInView(drawX, drawY, this.tileSize, this.tileSize)) {
-                    continue;
-                }
+            for (let row = startRow; row < endRow; row++) {
+                for (let col = startCol; col < endCol; col++) {
+                    const tileIndex = data[row * this.cols + col];
 
-                if (this.tileset) {
-                    const index = tile - 1;
+                    // Se il tileIndex è 0, è spazio vuoto: salta!
+                    if (tileIndex === 0) continue;
 
-                    const sx = (index % this.tilesetColumns) * this.tileSize;
-                    const sy = Math.floor(index / this.tilesetColumns) * this.tileSize;
+                    // Calcolo delle coordinate (X, Y) dentro l'immagine PNG del Tileset
+                    // Arrotondiamo Math.floor per evitare sbavature o righe tremolanti sui bordi!
+                    const id = tileIndex - 1; // Se gli ID nel JSON partono da 1
+                    const sx = (id % this.tilesetColumns) * this.tileSize;
+                    const sy = Math.floor(id / this.tilesetColumns) * this.tileSize;
 
+                    // Posizione reale di rendering sul Canvas isolata dalla Camera
+                    const dx = Math.floor(col * this.tileSize - camera.x);
+                    const dy = Math.floor(row * this.tileSize - camera.y);
+                    // Questo metodo risponde semplicemente con TRUE o FALSE: "C'è un blocco solido qui?"
+                    isSolidAt(x, y); {
+                        const col = Math.floor(x / this.tileSize);
+                        const row = Math.floor(y / this.tileSize);
+
+                        // Se siamo fuori dai bordi della mappa, non c'è blocco
+                        if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) {
+                            return false;
+                        }
+
+                        // Prende l'ID del blocco dal JSON
+                        const tileIndex = this.layers[0].data[row * this.cols + col];
+
+                        // Se l'ID è diverso da 0, significa che c'è un blocco di terra/solido!
+                        return tileIndex !== 0;
+                    }
+                    // Disegno preciso del pezzo di blocco
                     ctx.drawImage(
                         this.tileset,
-                        sx,
-                        sy,
-                        this.tileSize,
-                        this.tileSize,
-                        drawX,
-                        drawY,
-                        this.tileSize,
-                        this.tileSize
+                        sx, sy, this.tileSize, this.tileSize, // Coordinate sul PNG
+                        dx, dy, this.tileSize, this.tileSize  // Coordinate sul Canvas
                     );
-                } else {
-                    ctx.fillStyle = this.solidTiles.includes(tile)
-                        ? "#666"
-                        : "#999";
-
-                    ctx.fillRect(drawX, drawY, this.tileSize, this.tileSize);
                 }
             }
         }
-
-        super.draw(ctx, engine);
     }
 }
-/** 🌟  * Classe BeeTilemap: Gestisce la mappa di gioco strutturata a griglia (tile).
- * Si occupa di renderizzare lo sfondo e i livelli visivi, e controlla 
- * la solidità dei singoli blocchi per gestire i muri e le collisioni del Player.
- */
