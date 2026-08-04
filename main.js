@@ -209,7 +209,7 @@ const gameOverScene = {
     },
     update(dt, input) {
         if (!input) return;
-        if (input.wasPressed("Space") || input.wasPressed("Enter") || input.wasPressed("KeyR") || input.mouse.wasPressed) {
+        if (input.wasPressed("Space") || input.wasPressed("Enter") || input.wasPressed("KeyR") || (input.mouse && input.mouse.wasPressed)) {
             gioco.scenes.change('game');
         }
     },

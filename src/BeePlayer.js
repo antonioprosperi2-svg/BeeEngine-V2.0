@@ -76,7 +76,7 @@ export class BeePlayer extends BeeEntity {
         // Movimento in base alla modalità di gioco
         if (this.mode === 'platformer') {
             // Salto con Spazio, Frecce o Touch
-            if (input.wasPressed("Space") || input.wasPressed("ArrowUp") || input.wasPressed("KeyW") || input.mouse.wasPressed) {
+            if (input.wasPressed("Space") || input.wasPressed("ArrowUp") || input.wasPressed("KeyW") || (input.mouse && input.mouse.wasPressed)) {
                 this.jump();
             }
         } else {
