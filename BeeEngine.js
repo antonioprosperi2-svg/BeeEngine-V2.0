@@ -1,3 +1,4 @@
+import { BeeTilemapLoader } from './src/BeeTilemapLoader.js';
 import { BeeAnimatedSprite } from './src/BeeAnimatedSprite.js';
 import { BeeSpriteSheet } from './src/BeeSpriteSheet.js';
 import { BeeCollectible } from './src/BeeCollectible.js';
@@ -313,12 +314,19 @@ export class BeeEngine {
      */
     isRectVisibleInView(x, y, width, height) {
         if (width <= 0 || height <= 0) return false;
-        if (this.camera) {
+
+        // 1. Se hai una telecamera configurata, usiamo la telecamera!
+        if (this.camera && typeof this.camera.isRectVisible === 'function') {
             return this.camera.isRectVisible(x, y, width, height);
         }
+
+        // 2. Se usi la telecamera manuale (cameraX)
+        const cameraX = this.cameraX || 0;
+
+        // 3. Permettiamo al disegno di estendersi molto più a destra (es. fino a 10.000 pixel!)
         return (
-            x < this.canvas.width &&
-            x + width > 0 &&
+            x < cameraX + 10000 &&
+            x + width > cameraX &&
             y < this.canvas.height &&
             y + height > 0
         );
@@ -413,7 +421,8 @@ export {
     BeeCollectible,
     BeeCollisionSystem,
     BeeSpriteSheet,
-    BeeAnimatedSprite
+    BeeAnimatedSprite,
+    BeeTilemapLoader,
 };
 
 /** 🌟 Il ruolo di BeeEngine
