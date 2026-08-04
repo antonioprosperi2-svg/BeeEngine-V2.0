@@ -44,23 +44,29 @@ const gameScene = {
         // 1. Prendi la grande immagine dell'Atlas caricata nel manifest
         const megaSheetImg = gioco.getAsset('spritesheet_totale');
 
-        // Ogni casella di questo sheet è 128x128
-        const frameW = 128;
-        const frameH = 128;
+        if (!megaSheetImg) {
+            console.error('Asset "spritesheet_totale" mancante o non caricato. Oggetto assets:', gioco.assets);
+            // Non interrompiamo l'enter in modo che la scena possa comunque funzionare senza sprite.
+            // Il giocatore verrà disegnato con il fallback vettoriale definito in BeePlayer.draw
+        } else {
+            // Ogni casella di questo sheet è 128x128
+            const frameW = 128;
+            const frameH = 128;
 
-        const apeSheet = new BeeSpriteSheet(megaSheetImg, frameW, frameH, {
-            col: 3, // 8ª colonna (l'ultima a destra)
-            row: 3, // 1ª riga in alto
-            framesPerRow: 1, // Le apette sono una sotto l'altra, non affiancate!
-            frameCount: 2
-        });
+            const apeSheet = new BeeSpriteSheet(megaSheetImg, frameW, frameH, {
+                col: 3, // 8ª colonna (l'ultima a destra)
+                row: 3, // 1ª riga in alto
+                framesPerRow: 1, // Le apette sono una sotto l'una all'altra, non affiancate!
+                frameCount: 2
+            });
 
-        this.giocatore.sprite = new BeeAnimatedSprite(apeSheet, {
-            animation: "fly",
-            animations: {
-                fly: { frames: [0, 1], fps: 4, loop: true }
-            }
-        });
+            this.giocatore.sprite = new BeeAnimatedSprite(apeSheet, {
+                animation: "fly",
+                animations: {
+                    fly: { frames: [0, 1], fps: 4, loop: true }
+                }
+            });
+        }
         // Piattaforme solide
         const pavimento = new BeePlatform(0, 440, 800, 40, '#2e7d32'); // Terreno principale
         const p1 = new BeePlatform(150, 320, 180, 20, '#f57f17');
@@ -209,7 +215,7 @@ const gameOverScene = {
     },
     update(dt, input) {
         if (!input) return;
-        if (input.wasPressed("Space") || input.wasPressed("Enter") || input.wasPressed("KeyR") || input.mouse.wasPressed) {
+        if (input.wasPressed("Space") || input.wasPressed("Enter") || input.wasPressed("KeyR") || (input.mouse && input.mouse.wasPressed)) {
             gioco.scenes.change('game');
         }
     },

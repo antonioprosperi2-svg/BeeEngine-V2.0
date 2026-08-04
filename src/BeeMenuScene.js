@@ -17,7 +17,7 @@ export class BeeMenuScene {
     update(dt, input) {
         if (!input) return;
         // Quando premi ENTER, SPAZIO o Tocchi lo schermo, passa alla scena di gioco 'game'
-        if (input.wasPressed("Enter") || input.wasPressed("Space") || input.mouse.wasPressed) {
+        if (input.wasPressed("Enter") || input.wasPressed("Space") || (input.mouse && input.mouse.wasPressed)) {
             if (this.engine && this.engine.scenes) {
                 this.engine.scenes.change('game');
             }
