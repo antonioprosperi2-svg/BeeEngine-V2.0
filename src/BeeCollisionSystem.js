@@ -45,7 +45,7 @@ export class BeeCollisionSystem {
         return this;
     }
 
-    _activeInGroup(name) {
+    #activeInGroup(name) {
         const list = this.groups.get(name);
         if (!list || list.length === 0) return [];
         const out = [];
@@ -78,16 +78,16 @@ export class BeeCollisionSystem {
         for (let r = 0; r < this.rules.length; r++) {
             const rule = this.rules[r];
             if (rule.type === 'solid') {
-                this._resolveSolid(rule.movers, rule.solids);
+                this.#resolveSolid(rule.movers, rule.solids);
             } else if (rule.type === 'overlap') {
-                this._resolveOverlap(rule.a, rule.b, rule.callback);
+                this.#resolveOverlap(rule.a, rule.b, rule.callback);
             }
         }
     }
 
-    _resolveSolid(moversGroup, solidsGroup) {
-        const movers = this._activeInGroup(moversGroup);
-        const solids = this._activeInGroup(solidsGroup);
+    #resolveSolid(moversGroup, solidsGroup) {
+        const movers = this.#activeInGroup(moversGroup);
+        const solids = this.#activeInGroup(solidsGroup);
         if (movers.length === 0 || solids.length === 0) return;
 
         for (let i = 0; i < movers.length; i++) {
@@ -99,9 +99,9 @@ export class BeeCollisionSystem {
         }
     }
 
-    _resolveOverlap(groupA, groupB, callback) {
-        const listA = this._activeInGroup(groupA);
-        const listB = this._activeInGroup(groupB);
+    #resolveOverlap(groupA, groupB, callback) {
+        const listA = this.#activeInGroup(groupA);
+        const listB = this.#activeInGroup(groupB);
         if (listA.length === 0 || listB.length === 0) return;
 
         const engine = this.engine;
