@@ -81,7 +81,7 @@ export class BeeTilemapLoader {
         this.layers = mapJson.layers.filter(layer => layer.type === 'tilelayer');
 
         // Genera le collisioni con il nuovo algoritmo 2D
-        this._generateOptimizedSolids();
+        this.#generateOptimizedSolids();
 
         this.isLoaded = true;
     }
@@ -90,78 +90,99 @@ export class BeeTilemapLoader {
      * ALGORITMO GREEDY MESHING 2D DEFINITIVO
      * Fonde le tile solide adiacenti sia in orizzontale (X) che in verticale (Y)
      * basandosi rigorosamente sulla griglia logica per evitare bug fisici.
-     * @private
      */
-    _generateOptimizedSolids() {
+    #generateOptimizedSolids() {
         this.solidColliders = [];
+        this.layers.forEach(layer => this.#processSolidLayer(layer));
+    }
 
-        this.layers.forEach(layer => {
-            const layerName = layer.name.toLowerCase();
-            const isSolidLayer = this.layers.length === 1 ||
-                layerName === 'solids' ||
-                layerName === 'platforms' ||
-                layerName === 'livello tile 1' ||
-                (layer.properties && layer.properties.some(p => p.name === 'solid' && p.value === true));
+    #processSolidLayer(layer) {
+        if (!this.#isSolidLayer(layer)) return;
 
-            if (!isSolidLayer) return;
+        const data = layer.data;
+        const visited = new Uint8Array(this.mapWidth * this.mapHeight);
 
-            const data = layer.data;
-            // Array veloce per tracciare i blocchi già uniti ed evitare di ricontrollarli
-            const visited = new Uint8Array(this.mapWidth * this.mapHeight);
+        for (let y = 0; y < this.mapHeight; y++) {
+            for (let x = 0; x < this.mapWidth; x++) {
+                const index = y * this.mapWidth + x;
+                if (!this.#shouldCreateCollider(data, visited, index)) continue;
 
-            for (let y = 0; y < this.mapHeight; y++) {
-                for (let x = 0; x < this.mapWidth; x++) {
-                    const index = y * this.mapWidth + x;
-                    const tileGid = data[index];
-
-                    // Se troviamo una tile solida non ancora visitata
-                    if (tileGid !== 0 && this.tileLookup.has(tileGid) && !visited[index]) {
-
-                        // 1. Estendi il rettangolo in orizzontale (Asse X)
-                        let w = 1;
-                        while (
-                            x + w < this.mapWidth &&
-                            data[y * this.mapWidth + (x + w)] !== 0 &&
-                            !visited[y * this.mapWidth + (x + w)]
-                        ) {
-                            w++;
-                        }
-
-                        // 2. Estendi il rettangolo in verticale (Asse Y)
-                        let h = 1;
-                        let canGrowY = true;
-                        while (y + h < this.mapHeight && canGrowY) {
-                            // Verifica se l'intera riga successiva (lunga 'w') è solida e libera
-                            for (let k = 0; k < w; k++) {
-                                const nextRowIndex = (y + h) * this.mapWidth + (x + k);
-                                if (data[nextRowIndex] === 0 || visited[nextRowIndex]) {
-                                    canGrowY = false;
-                                    break;
-                                }
-                            }
-                            if (canGrowY) h++;
-                        }
-
-                        // 3. Marca tutte le tile all'interno del rettangolo finale come "visitate"
-                        for (let ny = 0; ny < h; ny++) {
-                            for (let nx = 0; nx < w; nx++) {
-                                visited[(y + ny) * this.mapWidth + (x + nx)] = 1;
-                            }
-                        }
-
-                        // 4. Genera il collisore basato sulla dimensione geometrica fissa della griglia
-                        const gridX = x * this.gridCellSize;
-                        const gridY = y * this.gridCellSize;
-                        const colliderWidth = w * this.gridCellSize;
-                        const colliderHeight = h * this.gridCellSize;
-
-                        this.solidColliders.push(
-                            new BeeRectCollider(gridX, gridY, colliderWidth, colliderHeight)
-                        );
-                    }
-                }
+                const { w, h } = this.#measureSolidRect(data, visited, x, y);
+                this.#markVisitedTiles(visited, x, y, w, h);
+                this.#addCollider(x, y, w, h);
             }
-        });
+        }
+    }
+
+    #isSolidLayer(layer) {
+        const layerName = (layer.name || '').toLowerCase();
+        if (this.layers.length === 1) return true;
+
+        if (
+            layerName === 'solids' ||
+            layerName === 'platforms' ||
+            layerName === 'livello tile 1'
+        ) {
+            return true;
+        }
+
+        return (layer.properties || []).some(p => p.name === 'solid' && p.value === true);
+    }
+
+    #shouldCreateCollider(data, visited, index) {
+        return data[index] !== 0 && this.tileLookup.has(data[index]) && !visited[index];
+    }
+
+    #measureSolidRect(data, visited, startX, startY) {
+        let w = 1;
+
+        while (
+            startX + w < this.mapWidth &&
+            data[startY * this.mapWidth + (startX + w)] !== 0 &&
+            !visited[startY * this.mapWidth + (startX + w)]
+        ) {
+            w++;
+        }
+
+        let h = 1;
+        while (this.#canGrowSolidRect(data, visited, startX, startY, w, h)) {
+            h++;
+        }
+
+        return { w, h };
+    }
+
+    #canGrowSolidRect(data, visited, startX, startY, width, height) {
+        if (startY + height >= this.mapHeight) return false;
+
+        const rowStart = (startY + height) * this.mapWidth + startX;
+        for (let k = 0; k < width; k++) {
+            const index = rowStart + k;
+            if (data[index] === 0 || visited[index]) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    #markVisitedTiles(visited, startX, startY, width, height) {
+        for (let ny = 0; ny < height; ny++) {
+            for (let nx = 0; nx < width; nx++) {
+                visited[(startY + ny) * this.mapWidth + (startX + nx)] = 1;
+            }
+        }
+    }
+
+    #addCollider(x, y, width, height) {
+        this.solidColliders.push(
+            new BeeRectCollider(
+                x * this.gridCellSize,
+                y * this.gridCellSize,
+                width * this.gridCellSize,
+                height * this.gridCellSize
+            )
+        );
     }
 
     /**
@@ -182,16 +203,19 @@ export class BeeTilemapLoader {
 
         // Se la telecamera non è definita, esegui il fallback sul disegno standard sicuro
         if (!camera) {
-            this._renderAll(ctx);
+            this.#renderAll(ctx);
             return;
         }
 
-        // Calcola gli indici di inizio e fine visibili sulla griglia
+        // Calcola gli indici di inizio e fine visibili sulla griglia (usa camera.w e camera.h)
+        const cameraWidth = camera.w ?? camera.width ?? 0;
+        const cameraHeight = camera.h ?? camera.height ?? 0;
+
         const startX = Math.max(0, Math.floor(camera.x / this.gridCellSize));
-        const endX = Math.min(this.mapWidth - 1, Math.ceil((camera.x + camera.width) / this.gridCellSize));
+        const endX = Math.min(this.mapWidth - 1, Math.ceil((camera.x + cameraWidth) / this.gridCellSize));
 
         const startY = Math.max(0, Math.floor(camera.y / this.gridCellSize));
-        const endY = Math.min(this.mapHeight - 1, Math.ceil((camera.y + camera.height) / this.gridCellSize));
+        const endY = Math.min(this.mapHeight - 1, Math.ceil((camera.y + cameraHeight) / this.gridCellSize));
 
         this.layers.forEach(layer => {
             if (!layer.visible) return;
@@ -229,9 +253,8 @@ export class BeeTilemapLoader {
 
     /**
    * Disegna tutte le tile correggendo i nomi con spazi e allineando gli elementi grafici
-   * @private
    */
-    _renderAll(ctx) {
+    #renderAll(ctx) {
         this.layers.forEach(layer => {
             if (!layer.visible) return;
             const data = layer.data;
