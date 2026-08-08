@@ -354,6 +354,9 @@ export class BeeEngine {
     async loadAsset(type, name, src) {
         if (type === 'image') return this.assets.loadImage(name, src);
         if (type === 'audio') return this.assets.loadSound(name, src);
+        if (type === 'json' && typeof this.assets.loadJSON === 'function') {
+            return this.assets.loadJSON(name, src);
+        }
         return Promise.reject(new Error(`Tipo di asset non supportato: ${type}`));
     }
 

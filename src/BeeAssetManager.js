@@ -67,7 +67,8 @@ export class BeeAssetManager {
     async loadJSON(name, src) {
         const response = await fetch(src);
         if (!response.ok) {
-            throw new Error(`Errore caricamento JSON: ${src}`);
+            const errorText = await response.text().catch(() => '');
+            throw new Error(`Errore caricamento JSON: ${src} (${response.status} ${response.statusText})${errorText ? ` - ${errorText}` : ''}`);
         }
         const data = await response.json();
         this.jsons.set(name, data);
