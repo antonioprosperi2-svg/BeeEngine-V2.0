@@ -27,7 +27,7 @@ export class BeeAssetManager {
         if (assetList.sounds) assetList.sounds.forEach(item => promises.push(this.loadSound(item.name, item.src)));
         if (assetList.jsons) assetList.jsons.forEach(item => promises.push(this.loadJSON(item.name, item.src)));
         await Promise.all(promises);
-        console.log("Tutte le risorse caricate!");
+        console.log("🐝 BeeAssetManager: Tutte le risorse sono state caricate!");
     }
 
     loadImage(name, src) {
@@ -67,7 +67,8 @@ export class BeeAssetManager {
     async loadJSON(name, src) {
         const response = await fetch(src);
         if (!response.ok) {
-            throw new Error(`Errore caricamento JSON: ${src}`);
+            const errorText = await response.text().catch(() => '');
+            throw new Error(`Errore caricamento JSON: ${src} (${response.status} ${response.statusText})${errorText ? ` - ${errorText}` : ''}`);
         }
         const data = await response.json();
         this.jsons.set(name, data);

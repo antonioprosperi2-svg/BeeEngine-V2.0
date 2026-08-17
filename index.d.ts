@@ -15,9 +15,9 @@ export interface BeeRect {
   height: number;
 }
 
-/** Voce del manifest risorse (immagini / audio). */
+/** Voce del manifest risorse (immagini / audio / JSON). */
 export interface BeeManifestItem {
-  type: "image" | "audio";
+  type: "image" | "audio" | "json";
   name: string;
   src: string;
 }
@@ -26,6 +26,7 @@ export interface BeeManifestItem {
 export interface BeeAssetList {
   images?: Array<{ name: string; src: string }>;
   sounds?: Array<{ name: string; src: string }>;
+  jsons?: Array<{ name: string; src: string }>;
 }
 
 /** Scena registrabile nel {@link BeeSceneManager}. */
@@ -131,6 +132,7 @@ export declare class BeeEntity {
 export declare class BeeAssetManager {
   images: Map<string, HTMLImageElement>;
   sounds: Map<string, HTMLAudioElement>;
+  jsons: Map<string, any>;
 
   constructor();
 
@@ -140,7 +142,9 @@ export declare class BeeAssetManager {
   getImage(name: string): HTMLImageElement | undefined;
   loadSound(name: string, src: string): Promise<HTMLAudioElement>;
   getSound(name: string): HTMLAudioElement | undefined;
-  getAsset(name: string): HTMLImageElement | HTMLAudioElement | undefined;
+  loadJSON(name: string, src: string): Promise<any>;
+  getJSON(name: string): any;
+  getAsset(name: string): HTMLImageElement | HTMLAudioElement | any | undefined;
   playSound(name: string, volume?: number): void;
 }
 
@@ -677,13 +681,13 @@ export declare class BeeEngine {
   checkCollision(rect1: BeeRect, rect2: BeeRect): boolean;
 
   loadAsset(
-    type: "image" | "audio",
+    type: "image" | "audio" | "json",
     name: string,
     src: string
-  ): Promise<HTMLImageElement | HTMLAudioElement>;
+  ): Promise<HTMLImageElement | HTMLAudioElement | any>;
 
   loadManifest(manifest: BeeManifestItem[]): Promise<void>;
-  getAsset(name: string): HTMLImageElement | HTMLAudioElement | undefined;
+  getAsset(name: string): HTMLImageElement | HTMLAudioElement | any | undefined;
 
   playSound(audioAsset: HTMLAudioElement): void;
   playMusic(audioAsset: HTMLAudioElement, volume?: number): void;

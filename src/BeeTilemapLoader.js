@@ -1,9 +1,8 @@
 import { BeeRectCollider } from './BeeRectCollider.js';
 
 /**
- * BeeEngine 2D Game Engine - Tilemap Loader Definitivo (v3.0 - Super Ottimizzato)
- * Gestisce Image Collections da Tiled, pre-carica gli asset senza duplicati,
- * applica un Frustum Culling matematico e fonde i collisori in 2D (X e Y).
+ * BeeEngine 2D Game Engine - Tilemap Loader Definitivo (v3.2)
+ * Caricamento asset senza 404, Frustum Culling e Greedy Meshing 2D.
  */
 export class BeeTilemapLoader {
     /**
@@ -21,28 +20,39 @@ export class BeeTilemapLoader {
     }
 
     /**
-     * Pre-carica automaticamente tutte le immagini presenti nel JSON di Tiled
-     * dentro BeeAssetManager ed evita di scaricare duplicati.
+     * Pre-carica gli asset dal JSON senza tentativi a vuoto in console
      */
-    async preloadAssets(mapJson, basePath = 'assets/images/') {
-        if (!mapJson.tilesets) return;
+    async preloadAssets(mapJson, basePath = 'assets/') {
+        if (!mapJson || !mapJson.tilesets) return;
 
         const loadPromises = [];
         const loadedImages = new Set();
 
+        const processImagePath = (rawPath) => {
+            if (!rawPath) return;
+            const imageName = rawPath.split('/').pop().split('\\').pop();
+            const cleanPath = `${basePath}${imageName}`.replace(/\/+/g, '/');
+
+            if (!loadedImages.has(imageName)) {
+                loadedImages.add(imageName);
+
+                if (this.engine.assets && typeof this.engine.assets.loadImage === 'function') {
+                    loadPromises.push(
+                        this.engine.assets.loadImage(imageName, cleanPath).catch(() => {
+                            console.warn(`⚠️ Impossibile caricare asset: ${cleanPath}`);
+                        })
+                    );
+                }
+            }
+        };
+
         mapJson.tilesets.forEach(tileset => {
-            if (tileset.tiles) {
+            if (tileset.image) {
+                processImagePath(tileset.image);
+            }
+            if (tileset.tiles && Array.isArray(tileset.tiles)) {
                 tileset.tiles.forEach(tile => {
-                    const imageName = tile.image.replace(/^.*[\\/]/, '');
-
-                    if (!loadedImages.has(imageName)) {
-                        loadedImages.add(imageName);
-                        const fullPath = `${basePath}${imageName}`;
-
-                        if (this.engine.assets && typeof this.engine.assets.loadImage === 'function') {
-                            loadPromises.push(this.engine.assets.loadImage(imageName, fullPath));
-                        }
-                    }
+                    if (tile.image) processImagePath(tile.image);
                 });
             }
         });
@@ -63,34 +73,61 @@ export class BeeTilemapLoader {
         if (mapJson.tilesets && mapJson.tilesets.length > 0) {
             mapJson.tilesets.forEach(tileset => {
                 const firstGid = tileset.firstgid || 1;
-                if (tileset.tiles) {
-                    tileset.tiles.forEach(tile => {
-                        const globalId = tile.id + firstGid;
-                        const imagePath = tile.image.replace(/^.*[\\/]/, '');
+                const tileWidth = tileset.tileheight ? tileset.tilewidth : (mapJson.tilewidth || this.gridCellSize);
+                const tileHeight = tileset.tileheight || mapJson.tileheight || this.gridCellSize;
+                const margin = tileset.margin || 0;
+                const spacing = tileset.spacing || 0;
+                const columns = tileset.columns || 1;
+
+                if (tileset.image) {
+                    const imagePath = tileset.image;
+                    const imageName = imagePath.split('/').pop().split('\\').pop();
+                    const tileCount = tileset.tilecount || 1;
+
+                    for (let id = 0; id < tileCount; id++) {
+                        const globalId = firstGid + id;
+                        const col = id % columns;
+                        const row = Math.floor(id / columns);
+                        const sx = margin + col * (tileWidth + spacing);
+                        const sy = margin + row * (tileHeight + spacing);
 
                         this.tileLookup.set(globalId, {
                             imagePath: imagePath,
-                            width: tile.imagewidth,
-                            height: tile.imageheight
+                            imageName: imageName,
+                            isSpriteSheet: true,
+                            sx: sx,
+                            sy: sy,
+                            width: tileWidth,
+                            height: tileHeight
                         });
+                    }
+                }
+
+                if (tileset.tiles && Array.isArray(tileset.tiles)) {
+                    tileset.tiles.forEach(tile => {
+                        const globalId = firstGid + tile.id;
+                        if (tile.image) {
+                            const imagePath = tile.image;
+                            const imageName = imagePath.split('/').pop().split('\\').pop();
+                            this.tileLookup.set(globalId, {
+                                imagePath: imagePath,
+                                imageName: imageName,
+                                isSpriteSheet: false,
+                                width: tile.imagewidth || tileWidth,
+                                height: tile.imageheight || tileHeight
+                            });
+                        }
                     });
                 }
             });
         }
 
-        this.layers = mapJson.layers.filter(layer => layer.type === 'tilelayer');
+        this.layers = (mapJson.layers || []).filter(layer => layer.type === 'tilelayer');
 
-        // Genera le collisioni con il nuovo algoritmo 2D
         this.#generateOptimizedSolids();
-
         this.isLoaded = true;
     }
 
-    /**
-     * ALGORITMO GREEDY MESHING 2D DEFINITIVO
-     * Fonde le tile solide adiacenti sia in orizzontale (X) che in verticale (Y)
-     * basandosi rigorosamente sulla griglia logica per evitare bug fisici.
-     */
     #generateOptimizedSolids() {
         this.solidColliders = [];
         this.layers.forEach(layer => this.#processSolidLayer(layer));
@@ -185,29 +222,25 @@ export class BeeTilemapLoader {
         );
     }
 
-    /**
-     * Restituisce i collisori per BeeCollisionSystem
-     */
     getColliders() {
         return this.solidColliders;
     }
 
-    /**
-     * RENDERING MATEMATICO CON FRUSTUM CULLING PREDITTIVO
-     * Calcola a priori quali righe e colonne sono visibili.
-     * Salta istantaneamente migliaia di tile fuori schermo senza fare cicli inutili.
-     */
+    #getTexture(tileInfo) {
+        return this.engine.assets.getImage(tileInfo.imageName) ||
+            this.engine.assets.getImage(tileInfo.imagePath) ||
+            this.engine.assets.getImage(encodeURIComponent(tileInfo.imagePath));
+    }
+
     render(ctx) {
         if (!this.isLoaded) return;
         const camera = this.engine.camera;
 
-        // Se la telecamera non è definita, esegui il fallback sul disegno standard sicuro
         if (!camera) {
             this.#renderAll(ctx);
             return;
         }
 
-        // Calcola gli indici di inizio e fine visibili sulla griglia (usa camera.w e camera.h)
         const cameraWidth = camera.w ?? camera.width ?? 0;
         const cameraHeight = camera.h ?? camera.height ?? 0;
 
@@ -222,7 +255,6 @@ export class BeeTilemapLoader {
 
             const data = layer.data;
 
-            // Itera SOLO ed esclusivamente nell'area visibile dallo schermo
             for (let y = startY; y <= endY; y++) {
                 for (let x = startX; x <= endX; x++) {
                     const i = y * this.mapWidth + x;
@@ -235,25 +267,36 @@ export class BeeTilemapLoader {
                     const gridX = x * this.gridCellSize;
                     const gridY = y * this.gridCellSize;
                     const offsetY = this.gridCellSize - tileInfo.height;
-                    const texture = this.engine.assets.getImage(tileInfo.imagePath);
+                    const texture = this.#getTexture(tileInfo);
 
                     if (texture) {
-                        ctx.drawImage(
-                            texture,
-                            gridX,
-                            gridY + offsetY,
-                            tileInfo.width,
-                            tileInfo.height
-                        );
+                        if (tileInfo.isSpriteSheet) {
+                            ctx.drawImage(
+                                texture,
+                                tileInfo.sx,
+                                tileInfo.sy,
+                                tileInfo.width,
+                                tileInfo.height,
+                                gridX,
+                                gridY + offsetY,
+                                tileInfo.width,
+                                tileInfo.height
+                            );
+                        } else {
+                            ctx.drawImage(
+                                texture,
+                                gridX,
+                                gridY + offsetY,
+                                tileInfo.width,
+                                tileInfo.height
+                            );
+                        }
                     }
                 }
             }
         });
     }
 
-    /**
-   * Disegna tutte le tile correggendo i nomi con spazi e allineando gli elementi grafici
-   */
     #renderAll(ctx) {
         this.layers.forEach(layer => {
             if (!layer.visible) return;
@@ -268,27 +311,31 @@ export class BeeTilemapLoader {
 
                 const gridX = (i % this.mapWidth) * this.gridCellSize;
                 const gridY = Math.floor(i / this.mapWidth) * this.gridCellSize;
-
-                // 1. Allineamento sul fondo della cella (128 - altezza reale della tile)
                 const offsetY = this.gridCellSize - tileInfo.height;
+                const texture = this.#getTexture(tileInfo);
 
-                // 2. DECODIFICA IL NOME: Trasforma gli spazi reali in nomi compatibili con l'asset manager
-                // Cerca sia il nome con lo spazio (" (4).png") sia la versione web ("%20(4).png")
-                let texture = this.engine.assets.getImage(tileInfo.imagePath);
-                if (!texture) {
-                    const encodedPath = encodeURIComponent(tileInfo.imagePath);
-                    texture = this.engine.assets.getImage(encodedPath);
-                }
-
-                // 3. Disegna l'elemento centrato orizzontalmente o allineato a sinistra nella cella da 128
                 if (texture) {
-                    ctx.drawImage(
-                        texture,
-                        gridX,
-                        gridY + offsetY,
-                        tileInfo.width,
-                        tileInfo.height
-                    );
+                    if (tileInfo.isSpriteSheet) {
+                        ctx.drawImage(
+                            texture,
+                            tileInfo.sx,
+                            tileInfo.sy,
+                            tileInfo.width,
+                            tileInfo.height,
+                            gridX,
+                            gridY + offsetY,
+                            tileInfo.width,
+                            tileInfo.height
+                        );
+                    } else {
+                        ctx.drawImage(
+                            texture,
+                            gridX,
+                            gridY + offsetY,
+                            tileInfo.width,
+                            tileInfo.height
+                        );
+                    }
                 }
             }
         });
