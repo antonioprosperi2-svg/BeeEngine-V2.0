@@ -1,3 +1,4 @@
+import { BeeJoystick } from './src/BeeJoystick.js';
 import { BeeTilemapLoader } from './src/BeeTilemapLoader.js';
 import { BeeAnimatedSprite } from './src/BeeAnimatedSprite.js';
 import { BeeSpriteSheet } from './src/BeeSpriteSheet.js';
@@ -51,9 +52,26 @@ export class BeeEngine {
 
         this.lockOrientation();
 
-        if ('ontouchstart' in window) {
-            this.touchControls = new BeeTouchControls(this.canvas, this.input);
+        this.touchControls = null;
+    } // <-- QUESTA GRAFFA CHIUDE IL CONSTRUCTOR. Se manca questa, da' 29 errori!
+
+    enableTouchControls() {
+        if (this.touchControls && typeof this.touchControls.destroy === 'function') {
+            this.touchControls.destroy();
         }
+        this.touchControls = new BeeTouchControls(this.canvas, this.input);
+    }
+
+    enableJoystick() {
+        if (this.touchControls && typeof this.touchControls.destroy === 'function') {
+            this.touchControls.destroy();
+        }
+        this.touchControls = new BeeJoystick(this.canvas, this.input);
+    }
+
+    createSpriteSheet(image, frameWidth, frameHeight, config = {}) {
+        return new BeeSpriteSheet(image, frameWidth, frameHeight, config);
+
     }
     createSpriteSheet(image, frameWidth, frameHeight, config = {}) {
         return new BeeSpriteSheet(image, frameWidth, frameHeight, config);
@@ -426,6 +444,7 @@ export {
     BeeSpriteSheet,
     BeeAnimatedSprite,
     BeeTilemapLoader,
+    BeeJoystick,
 };
 
 /** 🌟 Il ruolo di BeeEngine

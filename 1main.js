@@ -10,13 +10,13 @@ import {
 } from './BeeEngine.js';
 
 import { BeeTouchControls } from './BeeTouchControls.js';
-
+import { BeeJoystick } from './BeeJoystick.js';
 // 2. Inizializzazione Motore su Canvas "testCanvas"
 const gioco = new BeeEngine("testCanvas", 800, 600);
 gioco.enableAutoResize(800, 600, 100);
-
+const joystick = new BeeJoystick(canvas, gioco.input)
 window.gioco = gioco;
-
+gioco.enableJoystick();
 // Riferimento corretto al Canvas e al Context
 const canvas = gioco.canvas || document.getElementById('testCanvas');
 const ctx = gioco.ctx || canvas.getContext('2d');
