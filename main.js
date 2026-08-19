@@ -5,14 +5,22 @@ import {
     BeeInput,
     BeeSceneManager,
     BeeEnemyShooter,
-    BeeMenuScene
+    BeeMenuScene,
+    BeeJoystick,
+    BeeTouchControls
 } from './BeeEngine.js';
 
-// 1. Inizializzazione Motore su Canvas 800x600 con AutoResize
+// 1. Inizializzi il motore
 const gioco = new BeeEngine("testCanvas", 800, 600);
 gioco.enableAutoResize(800, 600, 100);
-
 window.gioco = gioco;
+
+// 2. Prendi il canvas dal motore (DOPO aver creato 'gioco')
+const canvas = gioco.canvas || document.getElementById('testCanvas');
+const ctx = gioco.ctx || canvas.getContext('2d');
+
+// 3. Attivi il joystick tramite il motore (fa tutto lui!)
+gioco.enableJoystick();
 
 // 2. Costanti di configurazione per lo Spara Bolle
 const WIDTH = 800;

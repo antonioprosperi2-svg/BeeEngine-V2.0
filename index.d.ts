@@ -692,3 +692,27 @@ export declare class BeeEngine {
   playSound(audioAsset: HTMLAudioElement): void;
   playMusic(audioAsset: HTMLAudioElement, volume?: number): void;
 }
+// ---------------------------------------------------------------------------
+// Nuove Classi Aggiunte (Joystick, Touch Controls, ecc.)
+// ---------------------------------------------------------------------------
+
+export declare class BeeJoystick {
+  constructor(...args: any[]);
+  [key: string]: any;
+}
+
+export declare class BeeSpriteSheet {
+  constructor(...args: any[]);
+  [key: string]: any;
+}
+
+// Sostituisci NomeTerzaClasse e NomeQuartaClasse con i nomi reali delle tue altre due classi
+export declare class BeeAnimatedSprite {
+  constructor(...args: any[]);
+  [key: string]: any;
+}
+
+export declare class BeeTilemapLoader {
+  constructor(...args: any[]);
+  [key: string]: any;
+}

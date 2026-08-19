@@ -1,6 +1,6 @@
 {
   "name": "beeengine",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Motore di gioco 2D modulare per HTML5 Canvas: fisica platformer, scene, input, asset, collisioni e HUD.",
   "type": "module",
   "main": "./BeeEngine.js",
@@ -35,14 +35,14 @@
     "beeengine",
     "gamedev"
   ],
-  "author": "",
+  "author": "Antonio Prosperi",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/antonioprosperi2-svg/PLAYCOMBO.git"
   },
   "bugs": {
-    "url": "https://github.com//antonioprosperi2-svg/PLAYCOMBO/issues"
+    "url": "https://github.com/antonioprosperi2-svg/PLAYCOMBO/issues"
   },
   "homepage": "https://github.com/antonioprosperi2-svg/PLAYCOMBO#readme",
   "engines": {
@@ -50,8 +50,5 @@
   },
   "devDependencies": {
     "typescript": "^5.7.0"
-  },
-  "dependencies": {
-    "beeengine": "^2.0.0"
   }
 }
