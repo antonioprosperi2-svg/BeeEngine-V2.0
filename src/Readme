@@ -1,18 +1,17 @@
-🐝 Motore di gioco 2D BeeEngine (v2.1 Professional)
+# 🐝 Motore di gioco 2D BeeEngine (v2.1.2 Professional)
 
 BeeEngine è un motore di gioco 2D leggero, modulare e altamente ottimizzato scritto in puro JavaScript moderno (ES Modules) per HTML5 Canvas.
-
 La versione 2.1 espande il motore introducendo controlli touch nativi e joystick virtuale per smartphone, architettura pronta per la distribuzione tramite NPM, ottimizzazioni avanzate per il risparmio della CPU e un sistema di collisioni centralizzato.
----
 
 ## 📁 Struttura del Progetto Aggiornata
 
-BeeEngine V2.1/
+```text
+BeeEngine-V2.1/
 ├── index.html                  # Punto di ingresso HTML e configurazione Canvas
 ├── main.js                     # Demo, gestione scene e punto d'avvio del gioco
 ├── BeeEngine.js                # Il CUORE del motore (Core Loop & System Coordinator)
 ├── README.md                   # Documentazione ufficiale e specifiche tecniche
-├── package.json                # Manifest di configurazione per la pubblicazione NPM (v2.1.0)
+├── package.json                # Manifest di configurazione per la pubblicazione NPM
 ├── tsconfig.json               # Configurazione TypeScript per i controlli dell'IDE
 ├── index.d.ts                  # Definizioni di tipo globali per IntelliSense e TypeScript
 ├── assets/                     # Gestione centralizzata e ordinata delle risorse
@@ -44,43 +43,51 @@ BeeEngine V2.1/
     ├── BeeTilemapLoader.js     # NUOVO: Caricatore asincrono per mappe di tessere
     ├── BeeTimer.js             # Gestore eventi basati sul tempo (Cooldown)
     └── BeeTouchControls.js     # NUOVO: Pulsanti tattili su schermo (Spara/Azione)
+```
+## 🚀 Novità e ottimizzazioni professionali nella v2.1.2
 
----
+### 1. Controlli Mobile e Joystick Virtuale (`BeeJoystick` & `BeeTouchControls`)
+* **Supporto nativo:** Gestione integrata per tutti gli schermi touch.
+* **Attivazione rapida:** Attiva il joystick analogico e i pulsanti programmabili con un solo comando.
+* **Codice:** `gioco.enableJoystick()`.
 
+### 2. Gestione Sprite e Mappe Avanzata (`BeeSpriteSheet` & `BeeTilemapLoader`)
+* **Ritaglio tessere:** Semplificato il caricamento e il ritaglio da fogli di sprite complessi.
+* **Asincronia:** Gestione fluida e asincrona dei livelli di gioco durante i caricamenti.
 
+### 3. Sistema di Collisioni Centralizzato (`BeeCollisionSystem`)
+* **Gruppi logici:** Registro centralizzato per dividere le entità in gruppi.
+* **Fisica ottimizzata:** Risoluzioni fisiche solide (`solid`) e interazioni ad eventi (`overlap`) ad alta efficienza.
 
-## 🚀 Novità e ottimizzazioni professionali nella v2.1
-## 1Controlli Mobile e Joystick Virtuale (BeeJoystick & BeeTouchControls)
-Aggiunto il supporto nativo per schermi touch. Ora è possibile attivare un joystick analogico a schermo e pulsanti d'azione programmabili con un semplice comando (gioco.enableJoystick()).
+### 4. Risparmio CPU tramite Frustum Culling (`BeeCamera`)
+* **Sfoltimento grafico:** Algoritmo per saltare il rendering delle entità fuori dallo schermo.
+* **Performance:** Mantiene i 60 FPS stabili anche con centinaia di oggetti in gioco.
 
-## 2 Gestione Sprite e Mappe Avanzata (BeeSpriteSheet & BeeTilemapLoader)
-Semplificato il caricamento e il ritaglio delle tessere da fogli di sprite complessi e la gestione asincrona dei livelli di gioco.
+### 5. Distribuzione NPM & Type Definitions (`index.d.ts`)
+* **Modulo ES6:** Distribuzione ufficiale sul registro NPM ottimizzata per i moduli moderni.
+* **Autocompletamento:** Definizioni di tipo aggiornate per l'IntelliSense e i suggerimenti in VS Code.
 
-## 3 Sistema di Collisioni Centralizzato (BeeCollisionSystem)
-Modulo centralizzato per registrare entità in gruppi logici ed eseguire risoluzioni fisiche solide (solid) e interazioni ad eventi (overlap) ad altissima efficienza.
-
-## 4 Risparmio CPU tramite Frustum Culling (BeeCamera)
-Algoritmo di sfoltimento grafico per saltare il rendering delle entità fuori dallo schermo, garantendo 60 FPS stabili.
-
-## 5 Distribuzione NPM (v2.1.0) & Type Definitions (index.d.ts)
-Distribuzione ufficiale su registro NPM con supporto completo ai moduli ES6 e definizioni di tipo aggiornate per l'autocompletamento in VS Code.
----
-
-## 🛠️ Esempio d'Uso Rapido (v2.1)
+## 🛠️ Esempio d'Uso Rapido (v2.1.2)
 
 ```javascript
-import { BeeEngine } from 'BeeEngine';
+import { BeeEngine } from 'beeengine';
 
+// 1. Inizializzazione Motore
 const gioco = new BeeEngine("testCanvas", 800, 600);
 gioco.enableAutoResize(800, 600, 100);
 
+// 2. Attivazione controlli mobile nativi (v2.1)
+gioco.enableJoystick();
+
+// 3. Regole Collisioni
 gioco.collisions.setGroup('solidi', piattaforme);
 gioco.collisions.setGroup('giocatore', [giocatore]);
 gioco.collisions.solid('giocatore', 'solidi');
 
-gioco.enableJoystick();
+// 4. Avvio Ciclo di Gioco
 gioco.start();
+```
 
-
+---
 
 BeeEngine è una libreria open source progettata per offrire un framework 2D fluido, leggero e modulare per lo sviluppo su HTML5 Canvas. 🐝
