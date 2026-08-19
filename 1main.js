@@ -1,3 +1,4 @@
+// 1. TUTTI GLI IMPORT IN CIMA AL FILE
 import {
     BeeEngine,
     BeeSprite,
@@ -8,13 +9,19 @@ import {
     BeeMenuScene
 } from './BeeEngine.js';
 
-// 1. Inizializzazione Motore su Canvas 800x600 con AutoResize
+import { BeeTouchControls } from './BeeTouchControls.js';
+
+// 2. Inizializzazione Motore su Canvas "testCanvas"
 const gioco = new BeeEngine("testCanvas", 800, 600);
 gioco.enableAutoResize(800, 600, 100);
 
 window.gioco = gioco;
 
-// 2. Costanti di configurazione per lo Spara Bolle
+// Riferimento corretto al Canvas e al Context
+const canvas = gioco.canvas || document.getElementById('testCanvas');
+const ctx = gioco.ctx || canvas.getContext('2d');
+
+// 3. Costanti di configurazione per lo Spara Bolle
 const WIDTH = 800;
 const HEIGHT = 600;
 
@@ -39,6 +46,10 @@ const COLORS = [
     "#cc66ff"
 ];
 
+// 4. Inizializzazione Controlli Touch usando l'input di BeeEngine
+const touchControls = new BeeTouchControls(canvas, gioco.input || gioco);
+
+// 5. Funzioni Utility della Griglia
 function randomColor() {
     return COLORS[Math.floor(Math.random() * COLORS.length)];
 }
@@ -63,71 +74,67 @@ function inBounds(row, col) {
 function getNeighbors(row, col) {
     if (row % 2 === 0) {
         return [
-            [row, col - 1],
-            [row, col + 1],
-            [row - 1, col],
-            [row - 1, col - 1],
-            [row + 1, col],
-            [row + 1, col - 1]
+            [row, col - 1], [row, col + 1],
+            [row - 1, col], [row - 1, col - 1],
+            [row + 1, col], [row + 1, col - 1]
         ];
     } else {
         return [
-            [row, col - 1],
-            [row, col + 1],
-            [row - 1, col],
-            [row - 1, col + 1],
-            [row + 1, col],
-            [row + 1, col + 1]
+            [row, col - 1], [row, col + 1],
+            [row - 1, col], [row - 1, col + 1],
+            [row + 1, col], [row + 1, col + 1]
         ];
     }
 }
 
-// 3. Classe per la Bolla sparata
+// 6. Classe per la Bolla sparata
 class ShotBubble {
     constructor(x, y, angle, color) {
         this.x = x;
         this.y = y;
         this.color = color;
-
-        const speed = 520;
-        this.vx = Math.cos(angle) * speed;
-        this.vy = Math.sin(angle) * speed;
-
-        this.destroyed = false;
-    }
-
-    update(dt) {
-        this.x += this.vx * dt;
-        this.y += this.vy * dt;
-
-        // Rimbalzo sui muri
-        if (this.x - RADIUS <= 0) {
-            this.x = RADIUS;
-            this.vx = Math.abs(this.vx);
-        }
-
-        if (this.x + RADIUS >= WIDTH) {
-            this.x = WIDTH - RADIUS;
-            this.vx = -Math.abs(this.vx);
-        }
-
-        if (this.y > HEIGHT + 100) {
-            this.destroyed = true;
-        }
-    }
-
-    draw(ctx) {
-        ctx.save();
-        ctx.fillStyle = this.color;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, RADIUS, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = "rgba(255,255,255,0.8)";
-        ctx.lineWidth = 3;
-        ctx.stroke();
-        ctx.restore();
     }
 }
+
+const speed = 520;
+this.vx = Math.cos(angle) * speed;
+this.vy = Math.sin(angle) * speed;
+
+this.destroyed = false;
+
+
+update(dt); {
+    this.x += this.vx * dt;
+    this.y += this.vy * dt;
+
+    // Rimbalzo sui muri
+    if (this.x - RADIUS <= 0) {
+        this.x = RADIUS;
+        this.vx = Math.abs(this.vx);
+    }
+
+    if (this.x + RADIUS >= WIDTH) {
+        this.x = WIDTH - RADIUS;
+        this.vx = -Math.abs(this.vx);
+    }
+
+    if (this.y > HEIGHT + 100) {
+        this.destroyed = true;
+    }
+}
+
+draw(ctx); {
+    ctx.save();
+    ctx.fillStyle = this.color;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, RADIUS, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,0.8)";
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.restore();
+}
+
 
 // 4. Scena di Gioco Completa
 const gameScene = {
