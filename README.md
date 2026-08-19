@@ -1,4 +1,4 @@
-# 🐝 Motore di gioco 2D BeeEngine (v2.1.2 Professional)
+# 🐝 Motore di gioco 2D BeeEngine (v2.1.3 Professional)
 
 BeeEngine è un motore di gioco 2D leggero, modulare e altamente ottimizzato scritto in puro JavaScript moderno (ES Modules) per HTML5 Canvas.
 La versione 2.1 espande il motore introducendo controlli touch nativi e joystick virtuale per smartphone, architettura pronta per la distribuzione tramite NPM, ottimizzazioni avanzate per il risparmio della CPU e un sistema di collisioni centralizzato.
@@ -44,7 +44,7 @@ BeeEngine-V2.1/
     ├── BeeTimer.js             # Gestore eventi basati sul tempo (Cooldown)
     └── BeeTouchControls.js     # NUOVO: Pulsanti tattili su schermo (Spara/Azione)
 ```
-## 🚀 Novità e ottimizzazioni professionali nella v2.1.2
+## 🚀 Novità e ottimizzazioni professionali nella v2.1.3
 
 ### 1. Controlli Mobile e Joystick Virtuale (`BeeJoystick` & `BeeTouchControls`)
 * **Supporto nativo:** Gestione integrata per tutti gli schermi touch.
@@ -67,7 +67,7 @@ BeeEngine-V2.1/
 * **Modulo ES6:** Distribuzione ufficiale sul registro NPM ottimizzata per i moduli moderni.
 * **Autocompletamento:** Definizioni di tipo aggiornate per l'IntelliSense e i suggerimenti in VS Code.
 
-## 🛠️ Esempio d'Uso Rapido (v2.1.2)
+## 🛠️ Esempio d'Uso Rapido (v2.1.3)
 
 ```javascript
 import { BeeEngine } from 'beeengine';
