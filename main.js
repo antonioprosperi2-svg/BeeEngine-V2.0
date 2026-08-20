@@ -10,32 +10,42 @@ import {
     BeeTouchControls
 } from './BeeEngine.js';
 
-// 1. Inizializzazione Motore
+// 1. Inizializzi il motore
 const gioco = new BeeEngine("testCanvas", 800, 600);
 gioco.enableAutoResize(800, 600, 100);
 window.gioco = gioco;
 
-// Protezione automatica per Mobile (evita scroll/zoom della pagina quando usi il touch)
-if (gioco.canvas) {
-    gioco.canvas.style.touchAction = 'none';
-    gioco.canvas.style.userSelect = 'none';
-    gioco.canvas.style.webkitUserSelect = 'none';
-}
+// 2. Prendi il canvas dal motore (DOPO aver creato 'gioco')
+const canvas = gioco.canvas || document.getElementById('testCanvas');
+const ctx = gioco.ctx || canvas.getContext('2d');
 
-// 2. Configurazione Costanti
+// 3. Attivi il joystick tramite il motore (fa tutto lui!)
+gioco.enableJoystick();
+
+// 2. Costanti di configurazione per lo Spara Bolle
 const WIDTH = 800;
 const HEIGHT = 600;
+
 const RADIUS = 18;
 const DIAMETER = RADIUS * 2;
 const VERTICAL_GAP = Math.sqrt(3) * RADIUS;
+
 const COLS = 12;
 const ROWS = 14;
+
 const TOP = 55;
 const LEFT = (WIDTH - (COLS * DIAMETER + RADIUS)) / 2;
+
 const SHOOTER_X = WIDTH / 2;
 const SHOOTER_Y = HEIGHT - 45;
 
-const COLORS = ["#ff4444", "#44aaff", "#ffdd33", "#66dd66", "#cc66ff"];
+const COLORS = [
+    "#ff4444",
+    "#44aaff",
+    "#ffdd33",
+    "#66dd66",
+    "#cc66ff"
+];
 
 function randomColor() {
     return COLORS[Math.floor(Math.random() * COLORS.length)];
@@ -59,22 +69,38 @@ function inBounds(row, col) {
 }
 
 function getNeighbors(row, col) {
-    const offset = (row % 2 === 0) ? -1 : 1;
-    return [
-        [row, col - 1], [row, col + 1],
-        [row - 1, col], [row - 1, col + offset],
-        [row + 1, col], [row + 1, col + offset]
-    ];
+    if (row % 2 === 0) {
+        return [
+            [row, col - 1],
+            [row, col + 1],
+            [row - 1, col],
+            [row - 1, col - 1],
+            [row + 1, col],
+            [row + 1, col - 1]
+        ];
+    } else {
+        return [
+            [row, col - 1],
+            [row, col + 1],
+            [row - 1, col],
+            [row - 1, col + 1],
+            [row + 1, col],
+            [row + 1, col + 1]
+        ];
+    }
 }
 
+// 3. Classe per la Bolla sparata
 class ShotBubble {
     constructor(x, y, angle, color) {
         this.x = x;
         this.y = y;
         this.color = color;
+
         const speed = 520;
         this.vx = Math.cos(angle) * speed;
         this.vy = Math.sin(angle) * speed;
+
         this.destroyed = false;
     }
 
@@ -82,14 +108,17 @@ class ShotBubble {
         this.x += this.vx * dt;
         this.y += this.vy * dt;
 
+        // Rimbalzo sui muri
         if (this.x - RADIUS <= 0) {
             this.x = RADIUS;
             this.vx = Math.abs(this.vx);
         }
+
         if (this.x + RADIUS >= WIDTH) {
             this.x = WIDTH - RADIUS;
             this.vx = -Math.abs(this.vx);
         }
+
         if (this.y > HEIGHT + 100) {
             this.destroyed = true;
         }
@@ -108,6 +137,7 @@ class ShotBubble {
     }
 }
 
+// 4. Scena di Gioco Completa
 const gameScene = {
     grid: null,
     shot: null,
@@ -116,17 +146,18 @@ const gameScene = {
     gameOver: false,
     win: false,
 
-    init() {
-        this.enter();
-    },
-
     enter() {
+        console.log("🎮 Inizio spara bolle!");
+
         this.grid = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+
+        // Righe iniziali di bolle
         for (let r = 0; r < 5; r++) {
             for (let c = 0; c < COLS; c++) {
                 this.grid[r][c] = randomColor();
             }
         }
+
         this.shot = null;
         this.nextColor = randomColor();
         this.score = 0;
@@ -134,12 +165,13 @@ const gameScene = {
         this.win = false;
     },
 
-    update(dt) {
-        const inSys = gioco ? gioco.input : null;
+    update(dt, input) {
+        // Se input viene passato dal motore o preso direttamente
+        const inSys = input || (gioco ? gioco.input : null);
         if (!inSys) return;
 
         if (this.gameOver) {
-            if (inSys.wasPressed("KeyR") || inSys.wasPressed("r") || (inSys.mouse && inSys.mouse.wasPressed)) {
+            if (inSys.wasPressed("KeyR") || inSys.wasPressed("r")) {
                 this.enter();
             }
             return;
@@ -156,9 +188,11 @@ const gameScene = {
 
         if (this.shot) {
             this.shot.update(dt);
+
             if (this.shouldAttachShot()) {
                 this.attachShot();
             }
+
             if (this.shot && this.shot.destroyed) {
                 this.shot = null;
             }
@@ -166,23 +200,14 @@ const gameScene = {
     },
 
     getAimAngle(input) {
-        let mx = SHOOTER_X;
-        let my = 0;
-
-        if (input && input.mouse) {
-            const rect = gioco.canvas.getBoundingClientRect();
-
-            // Scala corretta tra le dimensioni CSS del canvas e la risoluzione interna (800x600)
-            const scaleX = WIDTH / rect.width;
-            const scaleY = HEIGHT / rect.height;
-
-            // input.mouse.x/y è già scalato e relativo al canvas da BeeInput!
-            mx = input.mouse.x * scaleX;
-            my = input.mouse.y * scaleY;
-        }
+        let mx = (input.mouse && input.mouse.x) ? input.mouse.x : SHOOTER_X;
+        let my = (input.mouse && input.mouse.y) ? input.mouse.y : 0;
 
         let angle = Math.atan2(my - SHOOTER_Y, mx - SHOOTER_X);
-        if (angle > 0) angle = -Math.PI / 2;
+
+        if (angle > 0) {
+            angle = -Math.PI / 2;
+        }
 
         const minAngle = -Math.PI + 0.18;
         const maxAngle = -0.18;
@@ -192,20 +217,35 @@ const gameScene = {
 
     shoot(input) {
         if (this.shot) return;
+
         const angle = this.getAimAngle(input);
-        this.shot = new ShotBubble(SHOOTER_X, SHOOTER_Y, angle, this.nextColor);
+
+        this.shot = new ShotBubble(
+            SHOOTER_X,
+            SHOOTER_Y,
+            angle,
+            this.nextColor
+        );
+
         this.nextColor = randomColor();
     },
 
     shouldAttachShot() {
         if (!this.shot) return false;
-        if (this.shot.y - RADIUS <= TOP) return true;
+
+        if (this.shot.y - RADIUS <= TOP) {
+            return true;
+        }
 
         for (let r = 0; r < ROWS; r++) {
             for (let c = 0; c < COLS; c++) {
-                if (!this.grid[r][c]) continue;
+                const color = this.grid[r][c];
+                if (!color) continue;
+
                 const p = cellToPixel(r, c);
-                if (distanceSq(this.shot.x, this.shot.y, p.x, p.y) <= (DIAMETER - 2) ** 2) {
+                const d2 = distanceSq(this.shot.x, this.shot.y, p.x, p.y);
+
+                if (d2 <= (DIAMETER - 2) * (DIAMETER - 2)) {
                     return true;
                 }
             }
@@ -217,6 +257,7 @@ const gameScene = {
         if (!this.shot) return;
 
         const cell = this.findNearestEmptyCell(this.shot.x, this.shot.y);
+
         if (!cell) {
             this.gameOver = true;
             return;
@@ -224,16 +265,24 @@ const gameScene = {
 
         const { row, col } = cell;
         this.grid[row][col] = this.shot.color;
+
         const placedColor = this.shot.color;
         this.shot = null;
 
         const matched = this.findConnectedSameColor(row, col, placedColor);
+
         if (matched.length >= 3) {
-            for (const b of matched) this.grid[b.row][b.col] = null;
+            for (const b of matched) {
+                this.grid[b.row][b.col] = null;
+            }
+
             this.score += matched.length * 10;
 
             const floating = this.findFloatingBubbles();
-            for (const b of floating) this.grid[b.row][b.col] = null;
+            for (const b of floating) {
+                this.grid[b.row][b.col] = null;
+            }
+
             this.score += floating.length * 20;
         }
 
@@ -243,11 +292,14 @@ const gameScene = {
     findNearestEmptyCell(x, y) {
         let best = null;
         let bestDist = Infinity;
+
         for (let r = 0; r < ROWS; r++) {
             for (let c = 0; c < COLS; c++) {
                 if (this.grid[r][c]) continue;
+
                 const p = cellToPixel(r, c);
                 const d2 = distanceSq(x, y, p.x, p.y);
+
                 if (d2 < bestDist) {
                     bestDist = d2;
                     best = { row: r, col: c };
@@ -265,6 +317,7 @@ const gameScene = {
         while (queue.length > 0) {
             const current = queue.shift();
             const key = `${current.row},${current.col}`;
+
             if (visited.has(key)) continue;
             visited.add(key);
 
@@ -272,8 +325,12 @@ const gameScene = {
             if (this.grid[current.row][current.col] !== color) continue;
 
             result.push(current);
-            for (const [nr, nc] of getNeighbors(current.row, current.col)) {
-                if (inBounds(nr, nc) && this.grid[nr][nc] === color) {
+
+            const neighbors = getNeighbors(current.row, current.col);
+
+            for (const [nr, nc] of neighbors) {
+                if (!inBounds(nr, nc)) continue;
+                if (this.grid[nr][nc] === color) {
                     queue.push({ row: nr, col: nc });
                 }
             }
@@ -286,26 +343,39 @@ const gameScene = {
         const queue = [];
 
         for (let c = 0; c < COLS; c++) {
-            if (this.grid[0][c]) queue.push({ row: 0, col: c });
+            if (this.grid[0][c]) {
+                queue.push({ row: 0, col: c });
+            }
         }
 
         while (queue.length > 0) {
             const current = queue.shift();
             const key = `${current.row},${current.col}`;
+
             if (connectedToTop.has(key)) continue;
             connectedToTop.add(key);
 
-            for (const [nr, nc] of getNeighbors(current.row, current.col)) {
-                if (inBounds(nr, nc) && this.grid[nr][nc] && !connectedToTop.has(`${nr},${nc}`)) {
+            const neighbors = getNeighbors(current.row, current.col);
+
+            for (const [nr, nc] of neighbors) {
+                if (!inBounds(nr, nc)) continue;
+                if (!this.grid[nr][nc]) continue;
+
+                const nKey = `${nr},${nc}`;
+                if (!connectedToTop.has(nKey)) {
                     queue.push({ row: nr, col: nc });
                 }
             }
         }
 
         const floating = [];
+
         for (let r = 0; r < ROWS; r++) {
             for (let c = 0; c < COLS; c++) {
-                if (this.grid[r][c] && !connectedToTop.has(`${r},${c}`)) {
+                if (!this.grid[r][c]) continue;
+
+                const key = `${r},${c}`;
+                if (!connectedToTop.has(key)) {
                     floating.push({ row: r, col: c });
                 }
             }
@@ -315,11 +385,13 @@ const gameScene = {
 
     checkWinLose() {
         let remaining = 0;
+
         for (let r = 0; r < ROWS; r++) {
             for (let c = 0; c < COLS; c++) {
                 if (this.grid[r][c]) {
                     remaining++;
                     const p = cellToPixel(r, c);
+
                     if (p.y + RADIUS > SHOOTER_Y - 45) {
                         this.gameOver = true;
                         this.win = false;
@@ -327,19 +399,25 @@ const gameScene = {
                 }
             }
         }
+
         if (remaining === 0) {
             this.gameOver = true;
             this.win = true;
         }
     },
 
-    render(ctx) {
+    // Il motore cerca 'draw' o 'render'? Li mettiamo entrambi e li facciamo puntare allo stesso codice.
+    draw(ctx) {
         ctx.clearRect(0, 0, WIDTH, HEIGHT);
+
+        // Sfondo
         ctx.fillStyle = "#102030";
         ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
+        // Area superiore
         ctx.fillStyle = "#223344";
         ctx.fillRect(0, 0, WIDTH, TOP);
+
         ctx.strokeStyle = "#ffffff";
         ctx.lineWidth = 2;
         ctx.beginPath();
@@ -347,23 +425,35 @@ const gameScene = {
         ctx.lineTo(WIDTH, TOP);
         ctx.stroke();
 
+        // Bolle sulla griglia
         for (let r = 0; r < ROWS; r++) {
             for (let c = 0; c < COLS; c++) {
-                if (this.grid[r][c]) {
-                    const p = cellToPixel(r, c);
-                    this.drawBubble(ctx, p.x, p.y, this.grid[r][c]);
-                }
+                const color = this.grid[r][c];
+                if (!color) continue;
+
+                const p = cellToPixel(r, c);
+                this.drawBubble(ctx, p.x, p.y, color);
             }
         }
 
-        if (this.shot) this.shot.draw(ctx);
+        // Bolla sparata
+        if (this.shot) {
+            this.shot.draw(ctx);
+        }
+
+        // Cannone / mira
         this.drawShooter(ctx);
+
+        // HUD
         this.drawHUD(ctx);
-        if (this.gameOver) this.drawGameOver(ctx);
+
+        if (this.gameOver) {
+            this.drawGameOver(ctx);
+        }
     },
 
-    draw(ctx) {
-        this.render(ctx);
+    render(ctx) {
+        this.draw(ctx);
     },
 
     drawBubble(ctx, x, y, color) {
@@ -372,9 +462,11 @@ const gameScene = {
         ctx.beginPath();
         ctx.arc(x, y, RADIUS, 0, Math.PI * 2);
         ctx.fill();
+
         ctx.strokeStyle = "rgba(255,255,255,0.75)";
         ctx.lineWidth = 3;
         ctx.stroke();
+
         ctx.fillStyle = "rgba(255,255,255,0.35)";
         ctx.beginPath();
         ctx.arc(x - 6, y - 7, 5, 0, Math.PI * 2);
@@ -384,13 +476,18 @@ const gameScene = {
 
     drawShooter(ctx) {
         const input = gioco ? gioco.input : null;
-        let angle = input ? this.getAimAngle(input) : -Math.PI / 2;
+        let angle = -Math.PI / 2;
+
+        if (input) {
+            angle = this.getAimAngle(input);
+        }
 
         const aimLength = 80;
         const endX = SHOOTER_X + Math.cos(angle) * aimLength;
         const endY = SHOOTER_Y + Math.sin(angle) * aimLength;
 
         ctx.save();
+
         ctx.strokeStyle = "#ffffff";
         ctx.lineWidth = 5;
         ctx.lineCap = "round";
@@ -403,10 +500,12 @@ const gameScene = {
         ctx.beginPath();
         ctx.arc(SHOOTER_X, SHOOTER_Y, 24, 0, Math.PI * 2);
         ctx.fill();
+
         ctx.strokeStyle = "#000000";
         ctx.lineWidth = 2;
         ctx.stroke();
 
+        // Prossima bolla
         this.drawBubble(ctx, SHOOTER_X, SHOOTER_Y, this.nextColor);
         ctx.restore();
     },
@@ -415,13 +514,15 @@ const gameScene = {
         ctx.save();
         ctx.fillStyle = "rgba(0,0,0,0.5)";
         ctx.fillRect(0, 0, WIDTH, 40);
+
         ctx.fillStyle = "#ffffff";
         ctx.font = "bold 20px Arial";
         ctx.textAlign = "left";
         ctx.textBaseline = "middle";
         ctx.fillText(`Score: ${this.score}`, 20, 20);
+
         ctx.textAlign = "right";
-        ctx.fillText("Tocca / Click per sparare", WIDTH - 20, 20);
+        ctx.fillText("Click / Space per sparare", WIDTH - 20, 20);
         ctx.restore();
     },
 
@@ -429,19 +530,30 @@ const gameScene = {
         ctx.save();
         ctx.fillStyle = "rgba(0,0,0,0.7)";
         ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
         ctx.fillStyle = this.win ? "#66ff66" : "#ff6666";
         ctx.font = "bold 48px Arial";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText(this.win ? "HAI VINTO!" : "GAME OVER", WIDTH / 2, HEIGHT / 2 - 30);
+        ctx.fillText(
+            this.win ? "HAI VINTO!" : "GAME OVER",
+            WIDTH / 2,
+            HEIGHT / 2 - 30
+        );
+
         ctx.fillStyle = "#ffffff";
         ctx.font = "24px Arial";
-        ctx.fillText("Tocca o premi R per ricominciare", WIDTH / 2, HEIGHT / 2 + 30);
+        ctx.fillText(
+            "Premi R per ricominciare",
+            WIDTH / 2,
+            HEIGHT / 2 + 30
+        );
         ctx.restore();
     }
-};
+}; // <-- FINE DELL'OGGETTO gameScene CORRETTA!
 
-// Avvio scena
+// 5. REGISTRAZIONE DELLA SCENA ED AVVIO DEL MOTORE
+
 gioco.scenes.add('game', gameScene);
 gioco.scenes.change('game');
-gioco.start();
+gioco.start(); 
