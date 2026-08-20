@@ -15,6 +15,13 @@ const gioco = new BeeEngine("testCanvas", 800, 600);
 gioco.enableAutoResize(800, 600, 100);
 window.gioco = gioco;
 
+// Protezione automatica per Mobile (evita scroll/zoom della pagina quando usi il touch)
+if (gioco.canvas) {
+    gioco.canvas.style.touchAction = 'none';
+    gioco.canvas.style.userSelect = 'none';
+    gioco.canvas.style.webkitUserSelect = 'none';
+}
+
 // 2. Configurazione Costanti
 const WIDTH = 800;
 const HEIGHT = 600;
@@ -109,7 +116,6 @@ const gameScene = {
     gameOver: false,
     win: false,
 
-    // Metodo standard richiesto da BeeSceneManager
     init() {
         this.enter();
     },
@@ -133,7 +139,7 @@ const gameScene = {
         if (!inSys) return;
 
         if (this.gameOver) {
-            if (inSys.wasPressed("KeyR") || inSys.wasPressed("r")) {
+            if (inSys.wasPressed("KeyR") || inSys.wasPressed("r") || (inSys.mouse && inSys.mouse.wasPressed)) {
                 this.enter();
             }
             return;
@@ -163,13 +169,16 @@ const gameScene = {
         let mx = SHOOTER_X;
         let my = 0;
 
-        if (input.mouse) {
-            // Conversione coordinate canvas per prevenire disallineamenti con il ridimensionamento
+        if (input && input.mouse) {
             const rect = gioco.canvas.getBoundingClientRect();
+
+            // Scala corretta tra le dimensioni CSS del canvas e la risoluzione interna (800x600)
             const scaleX = WIDTH / rect.width;
             const scaleY = HEIGHT / rect.height;
-            mx = (input.mouse.x - rect.left) * scaleX;
-            my = (input.mouse.y - rect.top) * scaleY;
+
+            // input.mouse.x/y è già scalato e relativo al canvas da BeeInput!
+            mx = input.mouse.x * scaleX;
+            my = input.mouse.y * scaleY;
         }
 
         let angle = Math.atan2(my - SHOOTER_Y, mx - SHOOTER_X);
@@ -412,7 +421,7 @@ const gameScene = {
         ctx.textBaseline = "middle";
         ctx.fillText(`Score: ${this.score}`, 20, 20);
         ctx.textAlign = "right";
-        ctx.fillText("Click / Space per sparare", WIDTH - 20, 20);
+        ctx.fillText("Tocca / Click per sparare", WIDTH - 20, 20);
         ctx.restore();
     },
 
@@ -427,7 +436,7 @@ const gameScene = {
         ctx.fillText(this.win ? "HAI VINTO!" : "GAME OVER", WIDTH / 2, HEIGHT / 2 - 30);
         ctx.fillStyle = "#ffffff";
         ctx.font = "24px Arial";
-        ctx.fillText("Premi R per ricominciare", WIDTH / 2, HEIGHT / 2 + 30);
+        ctx.fillText("Tocca o premi R per ricominciare", WIDTH / 2, HEIGHT / 2 + 30);
         ctx.restore();
     }
 };
