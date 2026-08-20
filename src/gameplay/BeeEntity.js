@@ -1,5 +1,4 @@
-import { BeeRectCollider } from './BeeRectCollider.js';
-
+import { BeeRectCollider } from '../physics/BeeRectCollider.js';
 /**
  * Classe BeeEntity: La classe madre base per tutte le entità del motore.
  * Gestisce posizione (x, y), velocità (vx, vy), gravità facoltativa, collisioni e gerarchia di figli.

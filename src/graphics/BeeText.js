@@ -1,5 +1,4 @@
-import { BeeEntity } from './BeeEntity.js';
-
+import { BeeEntity } from '../gameplay/BeeEntity.js';
 /**
  * Classe BeeText: Gestisce sia testi singoli che l'Interfaccia di Gioco (HUD) con Punteggio e Vite.
  */
@@ -31,7 +30,7 @@ export class BeeText extends BeeEntity {
      */
     static drawHUD(ctx, score = 0, lives = 3, title = 'BEEENGINE PLATFORMER') {
         ctx.save();
-        
+
         // Sfondo barra HUD superiore
         ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
         ctx.fillRect(0, 0, ctx.canvas.width, 45);

@@ -1,33 +1,55 @@
-import { BeeVirtualDPad } from './src/BeeVirtualDPad.js';
-import { BeeTouchButton } from './src/BeeTouchButton.js';
-import { BeeJoystick } from './src/BeeJoystick.js';
-import { BeeTilemapLoader } from './src/BeeTilemapLoader.js';
-import { BeeAnimatedSprite } from './src/BeeAnimatedSprite.js';
-import { BeeSpriteSheet } from './src/BeeSpriteSheet.js';
-import { BeeCollectible } from './src/BeeCollectible.js';
-import { BeeSceneManager } from './src/BeeSceneManager.js';
-import { BeeSave } from './src/BeeSave.js';
-import { BeeParticleSystem } from './src/BeeParticleSystem.js';
-import { BeeTilemap } from './src/BeeTilemap.js';
-import { BeeButton } from './src/BeeButton.js';
-import { BeeText } from './src/BeeText.js';
-import { BeeTimer } from './src/BeeTimer.js';
-import { BeeRectCollider } from './src/BeeRectCollider.js';
-import { BeeAssetManager } from './src/BeeAssetManager.js';
-import { BeeMenuScene } from './src/BeeMenuScene.js';
-import { BeeBullet } from './src/BeeBullet.js';
-import { BeePlayer } from './src/BeePlayer.js';
-import { BeeEntity } from './src/BeeEntity.js';
-import { BeeGrid } from './src/BeeGrid.js';
-import { BeeCamera } from './src/BeeCamera.js';
-import { BeeSprite } from './src/BeeSprite.js';
-import { BeeTouchControls } from './src/BeeTouchControls.js';
-import { BeeInput } from './src/BeeInput.js';
-import { BeeNemico } from './src/BeeNemico.js';
-import { BeeEnemyShooter } from './src/BeeEnemyShooter.js';
-import { BeePlatform } from './src/BeePlatform.js';
-import { BeeCollisionSystem } from './src/BeeCollisionSystem.js';
+// ==========================================
+// 1. CORE & SISTEMI BASE (src/core/)
+// ==========================================
+import { BeeAssetManager } from './src/core/BeeAssetManager.js';
+import { BeeSceneManager } from './src/core/BeeSceneManager.js';
+import { BeeSave } from './src/core/BeeSave.js';
+import { BeeTimer } from './src/core/BeeTimer.js';
+import { BeeGrid } from './src/core/BeeGrid.js';
+
+// ==========================================
+// 2. INPUT & CONTROLLI TOUCH (src/input/)
+// ==========================================
+import { BeeInput } from './src/input/BeeInput.js';
+import { BeeTouchControls } from './src/input/BeeTouchControls.js';
+import { BeeTouchButton } from './src/input/BeeTouchButton.js';
+import { BeeVirtualDPad } from './src/input/BeeVirtualDPad.js';
+import { BeeJoystick } from './src/input/BeeJoystick.js';
+import { BeeButton } from './src/input/BeeButton.js';
+
+// ==========================================
+// 3. GRAFICA & RENDERING (src/graphics/)
+// ==========================================
+import { BeeSprite } from './src/graphics/BeeSprite.js';
+import { BeeSpriteSheet } from './src/graphics/BeeSpriteSheet.js';
+import { BeeAnimatedSprite } from './src/graphics/BeeAnimatedSprite.js';
+import { BeeCamera } from './src/graphics/BeeCamera.js';
+import { BeeParticleSystem } from './src/graphics/BeeParticleSystem.js';
+import { BeeTilemap } from './src/graphics/BeeTilemap.js';
+import { BeeTilemapLoader } from './src/graphics/BeeTilemapLoader.js';
+import { BeeText } from './src/graphics/BeeText.js';
+
+// ==========================================
+// 4. FISICA & COLLISIONI (src/physics/)
+// ==========================================
+import { BeeCollisionSystem } from './src/physics/BeeCollisionSystem.js';
+import { BeeRectCollider } from './src/physics/BeeRectCollider.js';
+import { BeeBullet } from './src/physics/BeeBullet.js';
+
+// ==========================================
+// 5. GAMEPLAY & ENTITÀ (src/gameplay/)
+// ==========================================
+import { BeeEntity } from './src/gameplay/BeeEntity.js';
+import { BeePlayer } from './src/gameplay/BeePlayer.js';
+import { BeeNemico } from './src/gameplay/BeeNemico.js';
+import { BeeEnemyShooter } from './src/gameplay/BeeEnemyShooter.js';
+import { BeeCollectible } from './src/gameplay/BeeCollectible.js';
+import { BeePlatform } from './src/gameplay/BeePlatform.js';
+import { BeeMenuScene } from './src/gameplay/BeeMenuScene.js';
+
 export class BeeEngine {
+    // Il cuore del tuo motore resta identico!
+
     constructor(canvasId, width, height) {
         this.canvas = document.getElementById(canvasId);
         this.ctx = this.canvas.getContext('2d');

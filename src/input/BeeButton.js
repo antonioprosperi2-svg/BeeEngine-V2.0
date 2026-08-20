@@ -1,4 +1,4 @@
-import { BeeEntity } from './BeeEntity.js';
+import { BeeEntity } from '../gameplay/BeeEntity.js';
 export class BeeButton extends BeeEntity {
     static listen(canvas) {
         function updateMousePosition(event) {

@@ -1,6 +1,6 @@
 import { BeeEntity } from './BeeEntity.js';
-import { BeeAnimatedSprite } from './BeeAnimatedSprite.js';
-import { BeeSpriteSheet } from './BeeSpriteSheet.js';
+import { BeeAnimatedSprite } from '../graphics/BeeAnimatedSprite.js';
+import { BeeSpriteSheet } from '../graphics/BeeSpriteSheet.js';
 /**
  * Classe BeePlayer: Il personaggio giocabile principale del motore.
  * Include gestione del punteggio, delle vite, movimenti sia per giochi Volanti/Arcade che Platformer (Salto + Gravità).

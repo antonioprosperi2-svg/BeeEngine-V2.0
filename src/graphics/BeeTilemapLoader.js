@@ -1,4 +1,4 @@
-import { BeeRectCollider } from './BeeRectCollider.js';
+import { BeeRectCollider } from '../physics/BeeRectCollider.js';
 
 /**
  * BeeEngine 2D Game Engine - Tilemap Loader Definitivo (v3.2)

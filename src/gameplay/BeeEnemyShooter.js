@@ -1,5 +1,5 @@
 import { BeeNemico } from './BeeNemico.js';
-import { BeeBullet } from './BeeBullet.js';
+import { BeeBullet } from '../physics/BeeBullet.js';
 
 /**
  * Classe BeeEnemyShooter: Nemico avanzato in grado di muoversi in 4 direzioni (su, giù, destra, sinistra)

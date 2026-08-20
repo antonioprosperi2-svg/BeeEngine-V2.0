@@ -1,4 +1,4 @@
-import { BeeEntity } from './BeeEntity.js';
+import { BeeEntity } from '../gameplay/BeeEntity.js';
 
 /**
  * Classe BeeBullet: Rappresenta un proiettile in movimento 2D (su, giù, destra, sinistra).

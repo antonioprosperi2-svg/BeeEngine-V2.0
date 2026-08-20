@@ -1,4 +1,4 @@
-import { BeeEntity } from './BeeEntity.js';
+import { BeeEntity } from '../gameplay/BeeEntity.js';
 export class BeeParticleSystem extends BeeEntity {
     constructor({
         x = 0,
