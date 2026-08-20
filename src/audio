@@ -15,17 +15,17 @@ if (type === 'audio') {
         audio.src = src;
     });
 }
-getAsset(name) {
+getAsset(name); {
     return this.assets[name];
 }
 
-playSound(audioAsset) {
+playSound(audioAsset);; {
     if (!audioAsset) return;
     const soundClone = audioAsset.cloneNode();
     soundClone.play().catch((err) => console.warn("Audio bloccato:", err));
 }
 
-playMusic(audioAsset, volume = 0.5) {
+playMusic(audioAsset, volume = 0.5); {
     if (!audioAsset) return;
     audioAsset.loop = true;
     audioAsset.volume = volume;

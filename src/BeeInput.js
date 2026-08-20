@@ -12,6 +12,10 @@ export class BeeInput {
             wasPressed: false
         };
 
+        // NUOVO: Registro dei tocchi per dispositivi mobile (Multitouch)
+        this.touches = [];
+
+        // 1. GESTIONE TASTIERA
         window.addEventListener('keydown', (e) => {
             if (!this.keys[e.code]) this.pressed[e.code] = true;
             this.keys[e.code] = true;
@@ -25,14 +29,15 @@ export class BeeInput {
             this.keys[e.key] = false;
         });
 
+        // 2. GESTIONE MOUSE
         canvas.addEventListener('mousemove', (e) => {
-            const pos = this.getMousePosition(e);
+            const pos = this.getCanvasPosition(e.clientX, e.clientY);
             this.mouse.x = pos.x;
             this.mouse.y = pos.y;
         });
 
         canvas.addEventListener('mousedown', (e) => {
-            const pos = this.getMousePosition(e);
+            const pos = this.getCanvasPosition(e.clientX, e.clientY);
             this.mouse.x = pos.x;
             this.mouse.y = pos.y;
             this.mouse.pressed = true;
@@ -42,14 +47,59 @@ export class BeeInput {
         canvas.addEventListener('mouseup', () => {
             this.mouse.pressed = false;
         });
+
+        // 3. GESTIONE TOUCH (MOBILE)
+        const updateTouches = (e) => {
+            // Evita lo zoom o lo scroll della pagina mentre si gioca
+            if (e.cancelable) e.preventDefault();
+
+            this.touches = Array.from(e.touches).map(touch => {
+                const pos = this.getCanvasPosition(touch.clientX, touch.clientY);
+                return {
+                    id: touch.identifier,
+                    x: pos.x,
+                    y: pos.y
+                };
+            });
+
+            // Mantiene la compatibilità con il mouse usando il primo dito
+            if (this.touches.length > 0) {
+                this.mouse.x = this.touches[0].x;
+                this.mouse.y = this.touches[0].y;
+            }
+        };
+
+        canvas.addEventListener('touchstart', (e) => {
+            updateTouches(e);
+            this.mouse.pressed = true;
+            this.mouse.wasPressed = true;
+        }, { passive: false });
+
+        canvas.addEventListener('touchmove', (e) => {
+            updateTouches(e);
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', (e) => {
+            updateTouches(e);
+            if (this.touches.length === 0) {
+                this.mouse.pressed = false;
+            }
+        }, { passive: false });
+
+        canvas.addEventListener('touchcancel', (e) => {
+            updateTouches(e);
+            if (this.touches.length === 0) {
+                this.mouse.pressed = false;
+            }
+        }, { passive: false });
     }
 
-    getMousePosition(e) {
+    // Trasforma le coordinate del client in coordinate canvas
+    getCanvasPosition(clientX, clientY) {
         const rect = this.canvas.getBoundingClientRect();
-
         return {
-            x: (e.clientX - rect.left) * (this.canvas.width / rect.width),
-            y: (e.clientY - rect.top) * (this.canvas.height / rect.height)
+            x: (clientX - rect.left) * (this.canvas.width / rect.width),
+            y: (clientY - rect.top) * (this.canvas.height / rect.height)
         };
     }
 
@@ -71,7 +121,3 @@ export class BeeInput {
         this.mouse.wasPressed = false;
     }
 }
-/** 🌟 * Classe BeeInput: Gestisce gli input globali dell'utente (tastiera e mouse).
- * Registra e memorizza lo stato dei tasti premuti o dei click del mouse per 
- * renderli disponibili in tempo reale a tutte le altre classi del gioco.
- */

@@ -9,7 +9,8 @@ import {
     BeeText,
     BeeSpriteSheet,
     BeeAnimatedSprite,
-    BeeTilemapLoader // NUOVO: Sostituito BeeTilemap con il loader per Image Collections
+    BeeTilemapLoader,
+    BeeRectCollider// Aggiunto per evitare errori nel fallback del terreno
 } from './BeeEngine.js';
 
 // 1. Inizializzazione Motore su Canvas 800x600 con AutoResize
@@ -31,29 +32,30 @@ const gameScene = {
     async enter() {
         console.log("📌 Asset disponibili:", gioco.assets?.jsons || 'Nessun asset caricato');
 
-
-        // Prendi il JSON della mappa dagli asset
+        // 1. Prendi il JSON della mappa dagli asset
         const jsonMappa = gioco.getAsset('livello1');
 
         if (jsonMappa) {
             this.tilemapLoader = new BeeTilemapLoader(gioco);
 
-            // 1. Precarica tutte le immagini distinte presenti nella mappa Tiled
+            // Precarica tutte le immagini distinte presenti nella mappa Tiled
             await this.tilemapLoader.preloadAssets(jsonMappa, 'assets/');
 
-            // 2. Analizza la mappa ed estrae la griglia e le collisioni
+            // Analizza la mappa ed estrae la griglia e le collisioni
             this.tilemapLoader.load(jsonMappa);
         } else {
             console.error("❌ Errore: Mappa JSON non trovata tra gli asset!");
         }
 
-        // Giocatore in modalità Platformer (Gravità + Salto)
+        // 2. Inizializzazione Giocatore in modalità Platformer (Gravità + Salto)
         this.giocatore = new BeePlayer(100, 300, 40, 40, 'ape');
         this.giocatore.mode = 'platformer';
         this.giocatore.score = 0;
         this.giocatore.lives = 3;
-
-        // Spritesheet del giocatore
+        // 🟢 AGGIUNGI QUESTE DUE RIGHE DI SICUREZZA FISICA:
+        this.giocatore.vx = 0; // Velocità orizzontale iniziale ferma
+        this.giocatore.vy = 0; // Velocità verticale iniziale ferma (evita picchiate improvvise)
+        // 3. Spritesheet del giocatore
         const megaSheetImg = gioco.getAsset('spritesheet_totale');
         if (megaSheetImg) {
             const apeSheet = new BeeSpriteSheet(megaSheetImg, 128, 128, {
@@ -71,29 +73,37 @@ const gameScene = {
             });
         }
 
-        // Nemici
+        // 4. Inizializzazione Nemici
         const nemico1 = new BeeNemico(200, 390, 36, 36);
         const nemicoShooter = new BeeEnemyShooter(500, 180, 40, 40);
-
         this.nemici = [nemico1, nemicoShooter];
 
-        // Registrazione Entità
+        // Registrazione nell'elenco unico entità
         this.entities = [...this.nemici, this.giocatore];
 
-        // Impostazione Collisioni con BeeCollisionSystem
+        // 5. Impostazione delle Collisioni con BeeCollisionSystem
         gioco.collisions.clear();
 
-        // Estrazione automatica dei collisori solidi ottimizzati dalla Tilemap
-        const solidiMappa = this.tilemapLoader ? this.tilemapLoader.getColliders() : [];
+        // Recupera i collisori registrati nel file JSON
+        let solidiMappa = this.tilemapLoader ? this.tilemapLoader.getColliders() : [];
 
+        // PROTEZIONE AUTOMATICA: Se il JSON non ha collisori, blocca l'ape sulla linea dei mattoni
+        if (solidiMappa.length === 0) {
+            console.warn("⚠️ Nessun collisore trovato nel JSON. Generazione automatica della linea del terreno attiva!");
+            const altezzaTerrenoVisivo = 380;
+            solidiMappa.push(new BeeRectCollider(0, altezzaTerrenoVisivo, gioco.canvas.width, 220));
+        }
+
+        // Registrazione dei gruppi nel motore fisico
         gioco.collisions.setGroup('solids', solidiMappa);
         gioco.collisions.setGroup('player', [this.giocatore]);
         gioco.collisions.setGroup('hazards', this.nemici);
 
+        // Attivazione fisica solida e interazioni
         gioco.collisions.solid('player', 'solids');
 
         gioco.collisions.overlap('player', 'hazards', (player, hazard) => {
-            const gameOver = player.takeDamage(1);
+            const gameOver = player.takeDamage ? player.takeDamage(1) : false;
             if (hazard.destroy) hazard.destroy();
 
             if (gameOver) {
@@ -169,10 +179,13 @@ const gameScene = {
     },
 
     draw(ctx) {
-        ctx.fillStyle = '#121629';
-        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        // 🟢 DISEGNA IL COLLISORE DI EMERGENZA PER VEDERE DOVE SI TROVA
+        ctx.save();
+        ctx.fillStyle = 'rgba(255, 0, 0, 0.4)'; // Rosso semi-trasparente
+        ctx.fillRect(0, 500, gioco.canvas.width, 220); // La stessa identica posizione del tuo blocco
+        ctx.restore();
 
-        // Disegna la Tilemap (gestisce internamente Frustum Culling e Allineamento)
+        // Disegna la Tilemap
         if (this.tilemapLoader) {
             this.tilemapLoader.render(ctx);
         }
@@ -185,9 +198,7 @@ const gameScene = {
             }
         }
 
-        // Usa il punto interrogativo per evitare che il gioco si blocchi se il giocatore non è ancora nato
         BeeText.drawHUD(ctx, this.giocatore?.score || 0, this.giocatore?.lives || 0, 'BEE ENGINE PLATFORMER');
-
     }
 };
 
@@ -228,31 +239,20 @@ gioco.scenes.add('menu', menuScene);
 gioco.scenes.add('game', gameScene);
 gioco.scenes.add('gameOver', gameOverScene);
 
-// 4. Caricamento Asset e Avvio dalla Scena 'menu'
+// 4. Caricamento Asset e Avvio
 gioco.loadManifest([
-
     { type: 'json', name: 'livello1', src: 'assets/livello-1.json' },
-
-    // I 5 fogli dello spritesheet
-    { type: 'image', name: 'Terrain (16 x 16).png', src: 'assets/Terrain (16 x 16).png' },
-    { type: 'image', name: 'Tropics_entities (16 x 16).png', src: 'assets/Tropics_entities.png' },
-    { type: 'image', name: '1 - Waters_version_1.png', src: 'assets/1 - Waters_version_1.png' },
-    { type: 'image', name: '5 - Sky_color.png', src: 'assets/5 - Sky_color.png' },
-    { type: 'image', name: '4 - Background_clouds.png', src: 'assets/4 - Background_clouds.png' },
-
+    { type: 'image', name: 'terrain', src: 'assets/terrain (16 x 16).png' },
+    { type: 'image', name: 'tropics_entities', src: 'assets/Tropics_entities (16 x 16).png' },
+    { type: 'image', name: 'waters', src: 'assets/1 - Waters_version_1.png' },
+    { type: 'image', name: 'sky', src: 'assets/5 - Sky_color.png' },
+    { type: 'image', name: 'clouds', src: 'assets/4 - Background_clouds.png' },
     { type: 'audio', name: 'musicaSfondo', src: 'assets/bgm_action_4.mp3' },
-    { type: 'audio', name: 'suonoCollisione', src: 'assets/completetask_0.mp3' }
+    { type: 'audio', name: 'suonoCollisione', src: 'assets/completetask_0.mp3' },
 ]).then(() => {
     const levelData = gioco.getAsset('livello1');
     console.log('JSON caricato:', levelData);
 
-    gioco.scenes.change('menu');
-    gioco.start();
-}).catch((err) => {
-    console.error('❌ Errore caricamento asset:', err);
-    gioco.scenes.change('menu');
-    gioco.start();
-}).then(() => {
     gioco.scenes.change('menu');
     gioco.start();
 }).catch((err) => {
