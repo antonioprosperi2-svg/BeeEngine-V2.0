@@ -1,3 +1,5 @@
+import { BeeVirtualDPad } from './src/BeeVirtualDPad.js';
+import { BeeTouchButton } from './src/BeeTouchButton.js';
 import { BeeJoystick } from './src/BeeJoystick.js';
 import { BeeTilemapLoader } from './src/BeeTilemapLoader.js';
 import { BeeAnimatedSprite } from './src/BeeAnimatedSprite.js';
@@ -445,6 +447,8 @@ export {
     BeeAnimatedSprite,
     BeeTilemapLoader,
     BeeJoystick,
+    BeeTouchButton,
+    BeeVirtualDPad,
 };
 
 /** 🌟 Il ruolo di BeeEngine
