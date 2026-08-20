@@ -161,7 +161,7 @@ export class BeeJoystick {
 
         // 2. Disegna Pulsante SPARO
         ctx.globalAlpha = this.actionBtn.active ? 0.9 : 0.5;
-        ctx.fillStyle = this.actionBtn.active ? '#ffffff' : '#ff4444';
+        ctx.fillStyle = this.actionBtn.active ? '#ffffff' : '#2040fb';
         ctx.beginPath();
         ctx.arc(this.actionBtn.x, this.actionBtn.y, this.actionBtn.radius, 0, Math.PI * 2);
         ctx.fill();
