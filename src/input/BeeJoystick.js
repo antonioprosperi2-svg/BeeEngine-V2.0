@@ -4,63 +4,99 @@ export class BeeJoystick {
         this.input = input;
 
         // Configurazione Joystick Virtuale
-        this.baseX = 100;
-        this.baseY = 0;
-        this.stickX = 100;
-        this.stickY = 0;
+        this.margin = 35;
         this.radius = 45;
+        this.knobRadius = 18;
+        this.deadZone = 10;
+
+        this.baseX = 0;
+        this.baseY = 0;
+        this.stickX = 0;
+        this.stickY = 0;
+
         this.active = false;
         this.touchId = null;
 
-        // Tasto Sparo a Destra
-        this.actionBtn = { x: 0, y: 0, radius: 35, active: false, touchId: null };
+        this.updateLayout();
 
         this.bindEvents();
     }
 
     bindEvents() {
-        const c = this.canvas;
-        c.addEventListener('touchstart', (e) => this.handleTouchStart(e), { passive: false });
-        c.addEventListener('touchmove', (e) => this.handleTouchMove(e), { passive: false });
-        c.addEventListener('touchend', (e) => this.handleTouchEnd(e), { passive: false });
-        c.addEventListener('touchcancel', (e) => this.handleTouchEnd(e), { passive: false });
+        this.onTouchStart = (e) => this.handleTouchStart(e);
+        this.onTouchMove = (e) => this.handleTouchMove(e);
+        this.onTouchEnd = (e) => this.handleTouchEnd(e);
+        this.onResize = () => this.updateLayout();
+
+        this.canvas.addEventListener('touchstart', this.onTouchStart, { passive: false });
+        this.canvas.addEventListener('touchmove', this.onTouchMove, { passive: false });
+        this.canvas.addEventListener('touchend', this.onTouchEnd, { passive: false });
+        this.canvas.addEventListener('touchcancel', this.onTouchEnd, { passive: false });
+
+        window.addEventListener('resize', this.onResize);
     }
 
-    // Calcolo preciso della posizione del dito scalata sul Canvas
+    updateLayout() {
+        const rect = this.canvas.getBoundingClientRect();
+
+        const canvasWidth = this.canvas.width || rect.width;
+        const canvasHeight = this.canvas.height || rect.height;
+
+        // Joystick fisso in basso a sinistra
+        this.baseX = this.margin + this.radius;
+        this.baseY = canvasHeight - this.margin - this.radius;
+
+        // Se non è attivo, il pomello rimane al centro della base
+        if (!this.active) {
+            this.stickX = this.baseX;
+            this.stickY = this.baseY;
+        }
+    }
+
     getCanvasCoords(touch) {
         const rect = this.canvas.getBoundingClientRect();
+
+        const rectWidth = rect.width || 1;
+        const rectHeight = rect.height || 1;
+
+        const canvasWidth = this.canvas.width || rectWidth;
+        const canvasHeight = this.canvas.height || rectHeight;
+
+        const scaleX = canvasWidth / rectWidth;
+        const scaleY = canvasHeight / rectHeight;
+
         return {
-            x: (touch.clientX - rect.left) * (this.canvas.width / rect.width),
-            y: (touch.clientY - rect.top) * (this.canvas.height / rect.height)
+            x: (touch.clientX - rect.left) * scaleX,
+            y: (touch.clientY - rect.top) * scaleY
         };
+    }
+
+    isInsideJoystick(x, y) {
+        const dx = x - this.baseX;
+        const dy = y - this.baseY;
+        const distance = Math.hypot(dx, dy);
+
+        // Leggermente più grande del raggio per facilitare il tocco su mobile
+        return distance <= this.radius + 20;
     }
 
     handleTouchStart(e) {
         if (e.cancelable) e.preventDefault();
 
-        for (let touch of e.changedTouches) {
+        this.updateLayout();
+
+        // Se il joystick è già controllato da un dito, ignora gli altri tocchi
+        if (this.active) return;
+
+        for (const touch of e.changedTouches) {
             const { x, y } = this.getCanvasCoords(touch);
 
-            // 1. Zona Joystick: Metà sinistra dello schermo
-            if (x < this.canvas.width / 2 && !this.active) {
+            if (this.isInsideJoystick(x, y)) {
                 this.active = true;
                 this.touchId = touch.identifier;
-                this.baseX = x;
-                this.baseY = y;
-                this.stickX = x;
-                this.stickY = y;
-                continue;
-            }
 
-            // 2. Zona Pulsante Sparo: Controllo collisione circolare
-            const dx = x - this.actionBtn.x;
-            const dy = y - this.actionBtn.y;
-            if (Math.hypot(dx, dy) < this.actionBtn.radius + 20) {
-                this.actionBtn.active = true;
-                this.actionBtn.touchId = touch.identifier;
-                if (this.input && this.input.setKey) {
-                    this.input.setKey(' ', true);
-                }
+                this.updateStickPosition(x, y);
+                break;
             }
         }
     }
@@ -68,31 +104,13 @@ export class BeeJoystick {
     handleTouchMove(e) {
         if (e.cancelable) e.preventDefault();
 
-        for (let touch of e.changedTouches) {
-            // Gestione movimento Joystick
-            if (touch.identifier === this.touchId && this.active) {
+        if (!this.active) return;
+
+        for (const touch of e.changedTouches) {
+            if (touch.identifier === this.touchId) {
                 const { x, y } = this.getCanvasCoords(touch);
-                const dx = x - this.baseX;
-                const dy = y - this.baseY;
-                const dist = Math.hypot(dx, dy);
-
-                // Calcolo posizione pomello visivo
-                if (dist <= this.radius) {
-                    this.stickX = x;
-                    this.stickY = y;
-                } else {
-                    const angle = Math.atan2(dy, dx);
-                    this.stickX = this.baseX + Math.cos(angle) * this.radius;
-                    this.stickY = this.baseY + Math.sin(angle) * this.radius;
-                }
-
-                // Invia i comandi virtuali a BeeInput (soglia 10px per sensibilità migliore)
-                if (this.input && this.input.setKey) {
-                    this.input.setKey('ArrowLeft', dx < -10);
-                    this.input.setKey('ArrowRight', dx > 10);
-                    this.input.setKey('ArrowUp', dy < -10);
-                    this.input.setKey('ArrowDown', dy > 10);
-                }
+                this.updateStickPosition(x, y);
+                break;
             }
         }
     }
@@ -100,84 +118,110 @@ export class BeeJoystick {
     handleTouchEnd(e) {
         if (e.cancelable) e.preventDefault();
 
-        for (let touch of e.changedTouches) {
-            // Rilascio Joystick
-            if (touch.identifier === this.touchId) {
-                this.active = false;
-                this.touchId = null;
-                if (this.input && this.input.setKey) {
-                    this.input.setKey('ArrowLeft', false);
-                    this.input.setKey('ArrowRight', false);
-                    this.input.setKey('ArrowUp', false);
-                    this.input.setKey('ArrowDown', false);
-                }
-            }
+        if (!this.active) return;
 
-            // Rilascio Tasto Sparo
-            if (touch.identifier === this.actionBtn.touchId) {
-                this.actionBtn.active = false;
-                this.actionBtn.touchId = null;
-                if (this.input && this.input.setKey) {
-                    this.input.setKey(' ', false);
-                }
+        for (const touch of e.changedTouches) {
+            if (touch.identifier === this.touchId) {
+                this.resetJoystick();
+                break;
             }
         }
     }
 
-    draw(ctx) {
-        ctx.save();
+    updateStickPosition(x, y) {
+        const dx = x - this.baseX;
+        const dy = y - this.baseY;
+        const distance = Math.hypot(dx, dy);
 
-        // Aggiorna posizione fissa tasto sparo in basso a destra
-        this.actionBtn.x = this.canvas.width - 70;
-        this.actionBtn.y = this.canvas.height - 70;
+        let clampedX = dx;
+        let clampedY = dy;
 
-        // 1. Disegna Joystick
-        if (this.active) {
-            // Cerchio Esterno
-            ctx.globalAlpha = 0.3;
-            ctx.fillStyle = '#ffffff';
-            ctx.beginPath();
-            ctx.arc(this.baseX, this.baseY, this.radius, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.lineWidth = 2;
-            ctx.strokeStyle = '#ffffff';
-            ctx.stroke();
+        // Limita il pomello dentro il raggio massimo
+        if (distance > this.radius) {
+            const angle = Math.atan2(dy, dx);
 
-            // Pomello Mobile
-            ctx.globalAlpha = 0.8;
-            ctx.fillStyle = '#ffcc00';
-            ctx.beginPath();
-            ctx.arc(this.stickX, this.stickY, 18, 0, Math.PI * 2);
-            ctx.fill();
-        } else {
-            // Guida visiva a riposo
-            ctx.globalAlpha = 0.2;
-            ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.arc(80, this.canvas.height - 70, 35, 0, Math.PI * 2);
-            ctx.stroke();
+            clampedX = Math.cos(angle) * this.radius;
+            clampedY = Math.sin(angle) * this.radius;
         }
 
-        // 2. Disegna Pulsante SPARO
-        ctx.globalAlpha = this.actionBtn.active ? 0.9 : 0.5;
-        ctx.fillStyle = this.actionBtn.active ? '#ffffff' : '#2040fb';
+        this.stickX = this.baseX + clampedX;
+        this.stickY = this.baseY + clampedY;
+
+        this.updateInput(clampedX, clampedY);
+    }
+
+    updateInput(dx, dy) {
+        if (!this.input || !this.input.setKey) return;
+
+        this.input.setKey('ArrowLeft', dx < -this.deadZone);
+        this.input.setKey('ArrowRight', dx > this.deadZone);
+        this.input.setKey('ArrowUp', dy < -this.deadZone);
+        this.input.setKey('ArrowDown', dy > this.deadZone);
+    }
+
+    resetJoystick() {
+        this.active = false;
+        this.touchId = null;
+
+        this.stickX = this.baseX;
+        this.stickY = this.baseY;
+
+        this.releaseKeys();
+    }
+
+    releaseKeys() {
+        if (!this.input || !this.input.setKey) return;
+
+        this.input.setKey('ArrowLeft', false);
+        this.input.setKey('ArrowRight', false);
+        this.input.setKey('ArrowUp', false);
+        this.input.setKey('ArrowDown', false);
+    }
+
+    draw(ctx) {
+        this.updateLayout();
+
+        ctx.save();
+
+        // Base joystick, visibile sempre
+        ctx.globalAlpha = this.active ? 0.35 : 0.22;
+        ctx.fillStyle = '#ffffff';
         ctx.beginPath();
-        ctx.arc(this.actionBtn.x, this.actionBtn.y, this.actionBtn.radius, 0, Math.PI * 2);
+        ctx.arc(this.baseX, this.baseY, this.radius, 0, Math.PI * 2);
         ctx.fill();
 
-        ctx.lineWidth = 2;
+        ctx.globalAlpha = this.active ? 0.8 : 0.45;
         ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(this.baseX, this.baseY, this.radius, 0, Math.PI * 2);
         ctx.stroke();
 
-        // Testo del Pulsante
-        ctx.globalAlpha = 1.0;
-        ctx.fillStyle = this.actionBtn.active ? '#000000' : '#ffffff';
-        ctx.font = 'bold 12px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('SPARA', this.actionBtn.x, this.actionBtn.y);
+        // Pomello giallo, visibile anche a riposo
+        ctx.globalAlpha = this.active ? 0.9 : 0.55;
+        ctx.fillStyle = '#ffcc00';
+        ctx.beginPath();
+        ctx.arc(this.stickX, this.stickY, this.knobRadius, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.globalAlpha = this.active ? 1 : 0.7;
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(this.stickX, this.stickY, this.knobRadius, 0, Math.PI * 2);
+        ctx.stroke();
 
         ctx.restore();
+    }
+
+    destroy() {
+        this.canvas.removeEventListener('touchstart', this.onTouchStart);
+        this.canvas.removeEventListener('touchmove', this.onTouchMove);
+        this.canvas.removeEventListener('touchend', this.onTouchEnd);
+        this.canvas.removeEventListener('touchcancel', this.onTouchEnd);
+
+        window.removeEventListener('resize', this.onResize);
+
+        this.releaseKeys();
     }
 }
