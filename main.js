@@ -71,7 +71,7 @@ const testScene = {
         const inSys = gioco?.input;
         const joy = getJoystickData(inSys);
 
-        ctx.fillStyle = "#000000";
+        ctx.fillStyle = "#dcd7d7";
         ctx.font = "16px monospace";
         ctx.fillText(`TEST JOYSTICK BEEENGINE`, 20, 30);
         ctx.fillText(`Joystick Trovato: ${joy.active ? "SI (In uso)" : "IDLE / NO"}`, 20, 60);
