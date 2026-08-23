@@ -5,24 +5,28 @@ import {
     BeeInput,
     BeeSceneManager,
     BeeEnemyShooter,
-    BeeMenuScene,
-    BeeJoystick,
-    BeeTouchControls
+    BeeMenuScene
 } from './BeeEngine.js';
 
-// 1. Inizializzi il motore
+// 1. Inizializzazione Engine
 const gioco = new BeeEngine("testCanvas", 800, 600);
 gioco.enableAutoResize(800, 600, 100);
+
+// Attivazione e debug Joystick nativo BeeEngine
+if (typeof gioco.enableJoystick === "function") {
+    gioco.enableJoystick();
+}
+
 window.gioco = gioco;
 
-// 2. Prendi il canvas dal motore
 const canvas = gioco.canvas || document.getElementById('testCanvas');
 const ctx = gioco.ctx || canvas.getContext('2d');
 
-// 3. Attivi il joystick tramite il motore
-gioco.enableJoystick();
+console.log("Joystick engine:", gioco.joystick);
+console.log("Touch controls:", gioco.touchControls);
+console.log("Input:", gioco.input);
 
-// 4. Costanti di configurazione per lo Spara Bolle
+// 2. Costanti di configurazione
 const WIDTH = 800;
 const HEIGHT = 600;
 
@@ -90,7 +94,83 @@ function getNeighbors(row, col) {
     }
 }
 
-// 5. Classe per la Bolla sparata
+// 3. Helper Input e Joystick Agnostico
+function keyDown(input, code) {
+    if (!input) return false;
+
+    if (typeof input.isPressed === "function" && input.isPressed(code)) return true;
+    if (input.keys && input.keys[code]) return true;
+    if (input.keysDown && input.keysDown[code]) return true;
+
+    return false;
+}
+
+function keyWasPressed(input, code) {
+    if (!input) return false;
+
+    if (typeof input.wasPressed === "function" && input.wasPressed(code)) return true;
+    if (input.pressed && input.pressed[code]) return true;
+
+    return false;
+}
+
+function mouseWasPressed(input) {
+    if (!input || !input.mouse) return false;
+
+    if (typeof input.mouse.wasPressed === "function") {
+        return input.mouse.wasPressed();
+    }
+
+    return !!input.mouse.wasPressed;
+}
+
+function getJoystickState(input) {
+    const joy =
+        input?.joystick ||
+        input?.virtualJoystick ||
+        gioco?.joystick ||
+        gioco?.touchControls?.joystick ||
+        gioco?.touch?.joystick ||
+        null;
+
+    if (!joy) {
+        return {
+            x: 0,
+            y: 0,
+            left: false,
+            right: false,
+            up: false
+        };
+    }
+
+    const x =
+        joy.x ??
+        joy.dx ??
+        joy.axisX ??
+        joy.horizontal ??
+        joy.stickX ??
+        0;
+
+    const y =
+        joy.y ??
+        joy.dy ??
+        joy.axisY ??
+        joy.vertical ??
+        joy.stickY ??
+        0;
+
+    const dead = 0.35;
+
+    return {
+        x,
+        y,
+        left: joy.left || joy.isLeft || x < -dead,
+        right: joy.right || joy.isRight || x > dead,
+        up: joy.up || joy.isUp || y < -dead
+    };
+}
+
+// 4. Classe ShotBubble
 class ShotBubble {
     constructor(x, y, angle, color) {
         this.x = x;
@@ -108,7 +188,6 @@ class ShotBubble {
         this.x += this.vx * dt;
         this.y += this.vy * dt;
 
-        // Rimbalzo sui muri
         if (this.x - RADIUS <= 0) {
             this.x = RADIUS;
             this.vx = Math.abs(this.vx);
@@ -137,7 +216,7 @@ class ShotBubble {
     }
 }
 
-// 6. Scena di Gioco Completa
+// 5. Scena di Gioco Principale
 const gameScene = {
     grid: null,
     shot: null,
@@ -146,10 +225,9 @@ const gameScene = {
     gameOver: false,
     win: false,
     currentAimAngle: -Math.PI / 2,
+    lastJoyUp: false,
 
     enter() {
-        console.log("🎮 Inizio spara bolle!");
-
         this.grid = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
 
         for (let r = 0; r < 5; r++) {
@@ -164,25 +242,37 @@ const gameScene = {
         this.gameOver = false;
         this.win = false;
         this.currentAimAngle = -Math.PI / 2;
+        this.lastJoyUp = false;
     },
 
     update(dt, input) {
-        const inSys = input || (gioco ? gioco.input : null);
+        const inSys = input || gioco?.input || null;
         if (!inSys) return;
 
+        const joy = getJoystickState(inSys);
+
         if (this.gameOver) {
-            if (inSys.wasPressed("KeyR") || inSys.wasPressed("r")) {
+            if (
+                keyWasPressed(inSys, "KeyR") ||
+                keyWasPressed(inSys, "r") ||
+                keyWasPressed(inSys, "R")
+            ) {
                 this.enter();
             }
             return;
         }
 
-        // Sparo tramite click, spazio o freccia SU del joystick
+        this.getAimAngle(inSys, dt);
+
+        const joyShoot = joy.up && !this.lastJoyUp;
+        this.lastJoyUp = joy.up;
+
         const wantsShoot =
-            (inSys.mouse && inSys.mouse.wasPressed) ||
-            inSys.wasPressed("Space") ||
-            inSys.wasPressed(" ") ||
-            inSys.wasPressed("ArrowUp");
+            mouseWasPressed(inSys) ||
+            keyWasPressed(inSys, "Space") ||
+            keyWasPressed(inSys, " ") ||
+            keyWasPressed(inSys, "ArrowUp") ||
+            joyShoot;
 
         if (wantsShoot) {
             this.shoot(inSys);
@@ -201,24 +291,38 @@ const gameScene = {
         }
     },
 
-    getAimAngle(input) {
+    getAimAngle(input, dt = 1 / 60) {
         const speed = 2.5;
+        const joy = getJoystickState(input);
 
-        // Verifica le frecce direzionali inviate dal joystick o dalla tastiera
-        const isLeft = input.isPressed ? input.isPressed("ArrowLeft") : (input.keys && input.keys["ArrowLeft"]);
-        const isRight = input.isPressed ? input.isPressed("ArrowRight") : (input.keys && input.keys["ArrowRight"]);
+        const isLeft =
+            keyDown(input, "ArrowLeft") ||
+            keyDown(input, "KeyA") ||
+            keyDown(input, "a") ||
+            joy.left;
+
+        const isRight =
+            keyDown(input, "ArrowRight") ||
+            keyDown(input, "KeyD") ||
+            keyDown(input, "d") ||
+            joy.right;
 
         if (isLeft) {
-            this.currentAimAngle -= speed * 0.016;
-        }
-        if (isRight) {
-            this.currentAimAngle += speed * 0.016;
+            this.currentAimAngle -= speed * dt;
         }
 
-        // Se si usa il mouse/touch puntuale, orienta in quella direzione
-        if (input.mouse && input.mouse.x && input.mouse.y && (input.mouse.x !== SHOOTER_X || input.mouse.y !== 0)) {
-            let mx = input.mouse.x;
-            let my = input.mouse.y;
+        if (isRight) {
+            this.currentAimAngle += speed * dt;
+        }
+
+        if (
+            input.mouse &&
+            typeof input.mouse.x === "number" &&
+            typeof input.mouse.y === "number"
+        ) {
+            const mx = input.mouse.x;
+            const my = input.mouse.y;
+
             if (my < SHOOTER_Y) {
                 this.currentAimAngle = Math.atan2(my - SHOOTER_Y, mx - SHOOTER_X);
             }
@@ -227,14 +331,18 @@ const gameScene = {
         const minAngle = -Math.PI + 0.18;
         const maxAngle = -0.18;
 
-        this.currentAimAngle = Math.max(minAngle, Math.min(maxAngle, this.currentAimAngle));
+        this.currentAimAngle = Math.max(
+            minAngle,
+            Math.min(maxAngle, this.currentAimAngle)
+        );
+
         return this.currentAimAngle;
     },
 
     shoot(input) {
         if (this.shot) return;
 
-        const angle = this.getAimAngle(input);
+        const angle = this.currentAimAngle;
 
         this.shot = new ShotBubble(
             SHOOTER_X,
@@ -425,11 +533,9 @@ const gameScene = {
     draw(ctx) {
         ctx.clearRect(0, 0, WIDTH, HEIGHT);
 
-        // Sfondo
         ctx.fillStyle = "#102030";
         ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
-        // Area superiore
         ctx.fillStyle = "#223344";
         ctx.fillRect(0, 0, WIDTH, TOP);
 
@@ -440,7 +546,6 @@ const gameScene = {
         ctx.lineTo(WIDTH, TOP);
         ctx.stroke();
 
-        // Bolle sulla griglia
         for (let r = 0; r < ROWS; r++) {
             for (let c = 0; c < COLS; c++) {
                 const color = this.grid[r][c];
@@ -451,15 +556,11 @@ const gameScene = {
             }
         }
 
-        // Bolla sparata
         if (this.shot) {
             this.shot.draw(ctx);
         }
 
-        // Cannone / mira
         this.drawShooter(ctx);
-
-        // HUD
         this.drawHUD(ctx);
 
         if (this.gameOver) {
@@ -490,12 +591,7 @@ const gameScene = {
     },
 
     drawShooter(ctx) {
-        const input = gioco ? gioco.input : null;
-        let angle = -Math.PI / 2;
-
-        if (input) {
-            angle = this.getAimAngle(input);
-        }
+        const angle = this.currentAimAngle;
 
         const aimLength = 80;
         const endX = SHOOTER_X + Math.cos(angle) * aimLength;
@@ -520,7 +616,6 @@ const gameScene = {
         ctx.lineWidth = 2;
         ctx.stroke();
 
-        // Prossima bolla
         this.drawBubble(ctx, SHOOTER_X, SHOOTER_Y, this.nextColor);
         ctx.restore();
     },
@@ -537,7 +632,7 @@ const gameScene = {
         ctx.fillText(`Score: ${this.score}`, 20, 20);
 
         ctx.textAlign = "right";
-        ctx.fillText("Usa Joystick per mirare / Spingi in alto per sparare", WIDTH - 20, 20);
+        ctx.fillText("Tastiera / Mouse / BeeJoystick", WIDTH - 20, 20);
         ctx.restore();
     },
 
@@ -567,7 +662,6 @@ const gameScene = {
     }
 };
 
-// 7. Registrazione della scena ed avvio
 gioco.scenes.add('game', gameScene);
 gioco.scenes.change('game');
 gioco.start();
