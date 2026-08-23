@@ -1,83 +1,195 @@
 import { BeeEngine } from './BeeEngine.js';
 
-// 1. Inizializzazione minimal
+// 1. Inizializzazione motore
 const gioco = new BeeEngine("testCanvas", 800, 600);
 gioco.enableAutoResize(800, 600, 100);
-
-if (typeof gioco.enableJoystick === "function") {
-    gioco.enableJoystick();
-}
-
 window.gioco = gioco;
 
-// 2. Helper per estrarre lo stato del joystick (Coordinate dirette)
-function getJoystickData(input) {
-    const joy = input?.joystick || gioco?.joystick || gioco?.touchControls?.joystick || null;
-    if (!joy) return { x: 0, y: 0, active: false };
+const canvas = gioco.canvas || document.getElementById('testCanvas');
 
-    const x = joy.x ?? joy.dx ?? joy.axisX ?? joy.horizontal ?? 0;
-    const y = joy.y ?? joy.dy ?? joy.axisY ?? joy.vertical ?? 0;
+// 2. Classe Joystick Virtuale Corretta
+class VirtualJoystick {
+    constructor(canvas, x, y, radius = 50) {
+        this.canvas = canvas;
+        this.baseX = x;
+        this.baseY = y;
+        this.radius = radius;
+        this.knobRadius = radius * 0.4; // Raggio del pomello interno
+        this.knobX = x;
+        this.knobY = y;
+        this.active = false;
+        this.pointerId = null;
+        this.vector = { x: 0, y: 0 };
 
-    return {
-        x,
-        y,
-        active: Math.abs(x) > 0.1 || Math.abs(y) > 0.1
-    };
+        this.initEvents();
+    }
+
+    initEvents() {
+        const getPos = (e) => {
+            const rect = this.canvas.getBoundingClientRect();
+            const scaleX = this.canvas.width / rect.width;
+            const scaleY = this.canvas.height / rect.height;
+            return {
+                x: (e.clientX - rect.left) * scaleX,
+                y: (e.clientY - rect.top) * scaleY
+            };
+        };
+
+        this.canvas.addEventListener('pointerdown', (e) => {
+            const pos = getPos(e);
+            const dx = pos.x - this.baseX;
+            const dy = pos.y - this.baseY;
+
+            // Attiva se si clicca/tocca dentro l'area della base
+            if (dx * dx + dy * dy <= (this.radius * 1.5) * (this.radius * 1.5)) {
+                this.active = true;
+                this.pointerId = e.pointerId;
+                if (this.canvas.setPointerCapture) {
+                    this.canvas.setPointerCapture(e.pointerId);
+                }
+                this.updatePosition(pos.x, pos.y);
+            }
+        });
+
+        window.addEventListener('pointermove', (e) => {
+            if (!this.active || e.pointerId !== this.pointerId) return;
+            const pos = getPos(e);
+            this.updatePosition(pos.x, pos.y);
+        });
+
+        const stop = (e) => {
+            if (e.pointerId === this.pointerId) {
+                this.active = false;
+                if (this.canvas.releasePointerCapture) {
+                    try { this.canvas.releasePointerCapture(e.pointerId); } catch (err) { }
+                }
+                this.pointerId = null;
+                this.knobX = this.baseX;
+                this.knobY = this.baseY;
+                this.vector = { x: 0, y: 0 };
+            }
+        };
+
+        window.addEventListener('pointerup', stop);
+        window.addEventListener('pointercancel', stop);
+    }
+
+    updatePosition(px, py) {
+        const dx = px - this.baseX;
+        const dy = py - this.baseY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist === 0) {
+            this.vector = { x: 0, y: 0 };
+            this.knobX = this.baseX;
+            this.knobY = this.baseY;
+            return;
+        }
+
+        const angle = Math.atan2(dy, dx);
+
+        // CALCOLO DEL CLAMPING CORRETTO:
+        // Il limite massimo del centro del pomello è (RaggioBase - RaggioPomello)
+        // così il bordo esterno del pomello scuro tocca perfettamente il bordo della base grigia senza uscire
+        const maxDistance = this.radius - this.knobRadius;
+        const clampedDist = Math.min(dist, maxDistance);
+
+        this.knobX = this.baseX + Math.cos(angle) * clampedDist;
+        this.knobY = this.baseY + Math.sin(angle) * clampedDist;
+
+        // Vettore normalizzato tra -1 e 1 in base alla corsa utile
+        this.vector = {
+            x: (Math.cos(angle) * clampedDist) / maxDistance,
+            y: (Math.sin(angle) * clampedDist) / maxDistance
+        };
+    }
+
+    draw(ctx) {
+        ctx.save();
+
+        // Base esterna (Cerchio grigio chiaro)
+        ctx.fillStyle = "rgba(200, 200, 200, 0.5)";
+        ctx.beginPath();
+        ctx.arc(this.baseX, this.baseY, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "rgba(80, 80, 80, 0.8)";
+        ctx.lineWidth = 4;
+        ctx.stroke();
+
+        // Pomello mobile (Cerchio grigio scuro)
+        ctx.fillStyle = this.active ? "rgba(100, 100, 100, 0.9)" : "rgba(120, 120, 120, 0.7)";
+        ctx.beginPath();
+        ctx.arc(this.knobX, this.knobY, this.knobRadius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.restore();
+    }
 }
 
-// 3. Quadrato di test
-const player = {
+// Istanza del Joystick (posizionato a x:120, y:480 con raggio 60)
+const joystick = new VirtualJoystick(canvas, 120, 480, 60);
+
+// 3. Entità Quadrato di Test
+const box = {
     x: 400,
-    y: 300,
+    y: 250,
     size: 40,
-    speed: 300 // pixel al secondo
+    speed: 250
 };
 
-// 4. Scena di Debug Minimal
+// 4. Scena di Test
 const testScene = {
     update(dt, input) {
         const inSys = input || gioco?.input;
-        const joy = getJoystickData(inSys);
 
-        // Movimento da Tastiera
+        // Tastiera PC (Frecce / WASD)
         if (inSys) {
-            if (inSys.isPressed?.("ArrowLeft") || inSys.keys?.["ArrowLeft"]) player.x -= player.speed * dt;
-            if (inSys.isPressed?.("ArrowRight") || inSys.keys?.["ArrowRight"]) player.x += player.speed * dt;
-            if (inSys.isPressed?.("ArrowUp") || inSys.keys?.["ArrowUp"]) player.y -= player.speed * dt;
-            if (inSys.isPressed?.("ArrowDown") || inSys.keys?.["ArrowDown"]) player.y += player.speed * dt;
+            if (inSys.isPressed?.("ArrowLeft") || inSys.isPressed?.("KeyA") || inSys.keys?.["ArrowLeft"] || inSys.keys?.["KeyA"]) {
+                box.x -= box.speed * dt;
+            }
+            if (inSys.isPressed?.("ArrowRight") || inSys.isPressed?.("KeyD") || inSys.keys?.["ArrowRight"] || inSys.keys?.["KeyD"]) {
+                box.x += box.speed * dt;
+            }
+            if (inSys.isPressed?.("ArrowUp") || inSys.isPressed?.("KeyW") || inSys.keys?.["ArrowUp"] || inSys.keys?.["KeyW"]) {
+                box.y -= box.speed * dt;
+            }
+            if (inSys.isPressed?.("ArrowDown") || inSys.isPressed?.("KeyS") || inSys.keys?.["ArrowDown"] || inSys.keys?.["KeyS"]) {
+                box.y += box.speed * dt;
+            }
         }
 
-        // Movimento da Joystick Vettoriale
-        if (joy.active) {
-            player.x += joy.x * player.speed * dt;
-            player.y += joy.y * player.speed * dt;
+        // Joystick (PC con Mouse o Smartphone con Touch)
+        if (joystick.active) {
+            box.x += joystick.vector.x * box.speed * dt;
+            box.y += joystick.vector.y * box.speed * dt;
         }
 
-        // Limiti dello schermo per non farlo uscire fuori
-        player.x = Math.max(player.size / 2, Math.min(800 - player.size / 2, player.x));
-        player.y = Math.max(player.size / 2, Math.min(600 - player.size / 2, player.y));
+        // Limiti schermo del quadrato
+        box.x = Math.max(0, Math.min(800 - box.size, box.x));
+        box.y = Math.max(0, Math.min(600 - box.size, box.y));
     },
 
     draw(ctx) {
-        // Sfondo bianco pulito
-        ctx.fillStyle = "#ffffff1e";
+        // Sfondo bianco
+        ctx.fillStyle = "#ffffff";
         ctx.fillRect(0, 0, 800, 600);
 
-        // Quadrato rosso di test
-        ctx.fillStyle = "#ff4444";
-        ctx.fillRect(player.x - player.size / 2, player.y - player.size / 2, player.size, player.size);
+        // Quadrato rosso
+        ctx.fillStyle = "#ff0000";
+        ctx.fillRect(box.x, box.y, box.size, box.size);
 
-        // HUD di Telemetria in alto a sinistra
-        const inSys = gioco?.input;
-        const joy = getJoystickData(inSys);
+        // Disegna il Joystick
+        joystick.draw(ctx);
 
-        ctx.fillStyle = "#dcd7d7";
-        ctx.font = "16px monospace";
-        ctx.fillText(`TEST JOYSTICK BEEENGINE`, 20, 30);
-        ctx.fillText(`Joystick Trovato: ${joy.active ? "SI (In uso)" : "IDLE / NO"}`, 20, 60);
-        ctx.fillText(`Asse X: ${joy.x.toFixed(2)}`, 20, 85);
-        ctx.fillText(`Asse Y: ${joy.y.toFixed(2)}`, 20, 110);
-        ctx.fillText(`Posizione Quadrato X: ${Math.round(player.x)} Y: ${Math.round(player.y)}`, 20, 135);
+        // Testi
+        ctx.fillStyle = "#000000";
+        ctx.font = "bold 18px monospace";
+        ctx.fillText("TEST JOYSTICK CORRETTO", 20, 30);
+        ctx.font = "14px monospace";
+        ctx.fillText(`Vettore -> X: ${joystick.vector.x.toFixed(2)} | Y: ${joystick.vector.y.toFixed(2)}`, 20, 60);
     },
 
     render(ctx) {
