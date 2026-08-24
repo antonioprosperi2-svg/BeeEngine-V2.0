@@ -613,6 +613,122 @@ export declare class BeeTouchControls {
   handleTouchEnd(e: TouchEvent): void;
   draw(ctx: CanvasRenderingContext2D): void;
 }
+// ---------------------------------------------------------------------------
+// Nuove Classi Aggiunte (Sprite, Map, Touch & Controls)
+// ---------------------------------------------------------------------------
+
+export declare class BeeJoystick {
+  canvas: HTMLCanvasElement;
+  x: number;
+  y: number;
+  radius: number;
+  handleRadius: number;
+  active: boolean;
+  angle: number;
+  distance: number;
+
+  constructor(options?: {
+    canvas?: HTMLCanvasElement;
+    x?: number;
+    y?: number;
+    radius?: number;
+    handleRadius?: number;
+  });
+
+  update(): void;
+  draw(ctx: CanvasRenderingContext2D): void;
+  getDir(): { x: number; y: number };
+}
+
+export declare class BeeSpriteSheet {
+  image: HTMLImageElement;
+  frameWidth: number;
+  frameHeight: number;
+  cols: number;
+  rows: number;
+  frameCount: number;
+
+  constructor(
+    image: HTMLImageElement,
+    frameWidth: number,
+    frameHeight: number,
+    options?: { col?: number; row?: number; framesPerRow?: number; frameCount?: number }
+  );
+
+  drawFrame(
+    ctx: CanvasRenderingContext2D,
+    frameIndex: number,
+    x: number,
+    y: number,
+    width?: number,
+    height?: number
+  ): void;
+}
+
+export declare class BeeAnimatedSprite {
+  sheet: BeeSpriteSheet;
+  animations: Record<string, { frames: number[]; fps?: number; loop?: boolean }>;
+  currentAnimName: string;
+  currentFrameIndex: number;
+  timer: number;
+  flipX: boolean;
+
+  constructor(
+    spriteSheet: BeeSpriteSheet,
+    config?: {
+      animation?: string;
+      animations?: Record<string, { frames: number[]; fps?: number; loop?: boolean }>;
+    }
+  );
+
+  play(name: string): void;
+  update(dt: number): void;
+  draw(ctx: CanvasRenderingContext2D, x: number, y: number, options?: { width?: number; height?: number }): void;
+}
+
+export declare class BeeTilemapLoader {
+  static loadJSON(url: string): Promise<any>;
+}
+
+export declare class BeeVirtualDPad {
+  canvas: HTMLCanvasElement;
+  x: number;
+  y: number;
+  size: number;
+  eightWay: boolean;
+  dir: { x: number; y: number };
+
+  constructor(options?: {
+    canvas?: HTMLCanvasElement;
+    x?: number;
+    y?: number;
+    size?: number;
+    eightWay?: boolean;
+  });
+
+  update(): void;
+  draw(ctx: CanvasRenderingContext2D): void;
+}
+
+export declare class BeeTouchButton {
+  canvas: HTMLCanvasElement;
+  x: number;
+  y: number;
+  radius: number;
+  label: string;
+  isPressed: boolean;
+
+  constructor(options?: {
+    canvas?: HTMLCanvasElement;
+    x?: number;
+    y?: number;
+    radius?: number;
+    label?: string;
+  });
+
+  update(): void;
+  draw(ctx: CanvasRenderingContext2D): void;
+}
 
 // ---------------------------------------------------------------------------
 // BeeEngine (core)
@@ -635,6 +751,8 @@ export declare class BeeEngine {
   isPaused: boolean;
   animationFrameId: number | null;
   touchControls?: BeeTouchControls;
+  virtualDPad?: BeeVirtualDPad;
+
 
   /** Callback di update impostati con {@link BeeEngine.start}. */
   update?: BeeGameLoopCallback;
@@ -655,6 +773,14 @@ export declare class BeeEngine {
   resume(): void;
   stop(): void;
   destroy(): void;
+
+  enableJoystick(options?: {
+    x?: number;
+    y?: number;
+    radius?: number;
+    handleRadius?: number;
+  }): BeeJoystick;
+  enableTouchControls(): BeeTouchControls;
 
   start(
     updateCallback?: BeeGameLoopCallback,
@@ -691,28 +817,4 @@ export declare class BeeEngine {
 
   playSound(audioAsset: HTMLAudioElement): void;
   playMusic(audioAsset: HTMLAudioElement, volume?: number): void;
-}
-// ---------------------------------------------------------------------------
-// Nuove Classi Aggiunte (Joystick, Touch Controls, ecc.)
-// ---------------------------------------------------------------------------
-
-export declare class BeeJoystick {
-  constructor(...args: any[]);
-  [key: string]: any;
-}
-
-export declare class BeeSpriteSheet {
-  constructor(...args: any[]);
-  [key: string]: any;
-}
-
-// Sostituisci NomeTerzaClasse e NomeQuartaClasse con i nomi reali delle tue altre due classi
-export declare class BeeAnimatedSprite {
-  constructor(...args: any[]);
-  [key: string]: any;
-}
-
-export declare class BeeTilemapLoader {
-  constructor(...args: any[]);
-  [key: string]: any;
 }
