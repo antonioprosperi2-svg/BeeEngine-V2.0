@@ -4,7 +4,7 @@
   "description": "Motore di gioco 2D modulare per HTML5 Canvas: fisica platformer, scene, input, asset, collisioni e HUD.",
   "type": "module",
   "main": "./BeeEngine.js",
-  "module": "./BeeEngine.js",
+  "module": "././BeeEngine.js",
   "types": "./index.d.ts",
   "exports": {
     ".": {
