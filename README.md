@@ -55,7 +55,7 @@ BeeEngine-V2.2/
 * **Codice:** `gioco.enableJoystick()`.
 
 ### 📱 NUOVO: Componenti Interfaccia Touch Avanzati
-Nella v2.1.3 sono state introdotte due nuove classi specifiche esportate per una gestione granulare dell'input mobile:
+Nella v2.2.0 sono state introdotte due nuove classi specifiche esportate per una gestione granulare dell'input mobile:
 * **`BeeVirtualDPad`**: Una pulsantiera direzionale configurabile a 4 o 8 direzioni (`eightWay: false/true`), ideale per movimenti precisi stile retro-game o platform.
 * **`BeeTouchButton`**: Un pulsante tattile rotondo completamente personalizzabile nel raggio e nel testo dell'etichetta (es. "A" per saltare, "B" per sparare).
 
