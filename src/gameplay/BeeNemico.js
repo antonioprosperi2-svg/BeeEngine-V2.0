@@ -1,4 +1,4 @@
-import { BeeEntity } from './BeeEntity.js';
+import { BeeEntity } from '../core/BeeEntity.js';
 
 /**
  * Classe BeeNemico: Rappresenta i personaggi ostili nel gioco.

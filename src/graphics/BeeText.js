@@ -1,4 +1,4 @@
-import { BeeEntity } from '../gameplay/BeeEntity.js';
+import { BeeEntity } from '../core/BeeEntity.js';
 /**
  * Classe BeeText: Gestisce sia testi singoli che l'Interfaccia di Gioco (HUD) con Punteggio e Vite.
  */

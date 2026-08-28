@@ -1,4 +1,4 @@
-import { BeeEntity } from '../gameplay/BeeEntity.js';
+import { BeeEntity } from '../core/BeeEntity.js';
 export class BeeTilemap extends BeeEntity {
     constructor({
         x = 0,

@@ -1,4 +1,4 @@
-import { BeeEntity } from './BeeEntity.js';
+import { BeeEntity } from '../core/BeeEntity.js';
 
 /**
  * Classe BeePlatform: Rappresenta una piattaforma solida su cui i personaggi possono camminare e atterrare.

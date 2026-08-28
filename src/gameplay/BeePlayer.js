@@ -1,4 +1,4 @@
-import { BeeEntity } from './BeeEntity.js';
+import { BeeEntity } from '../core/BeeEntity.js';
 import { BeeAnimatedSprite } from '../graphics/BeeAnimatedSprite.js';
 import { BeeSpriteSheet } from '../graphics/BeeSpriteSheet.js';
 /**

@@ -2,6 +2,7 @@
 // 1. CORE & SISTEMI BASE (src/core/)
 // ==========================================
 import { BeeAssetManager } from './src/core/BeeAssetManager.js';
+import { BeeEntity } from './src/core/BeeEntity.js';
 import { BeeSceneManager } from './src/core/BeeSceneManager.js';
 import { BeeSave } from './src/core/BeeSave.js';
 import { BeeTimer } from './src/core/BeeTimer.js';
@@ -39,7 +40,7 @@ import { BeeBullet } from './src/physics/BeeBullet.js';
 // ==========================================
 // 5. GAMEPLAY & ENTITÀ (src/gameplay/)
 // ==========================================
-import { BeeEntity } from './src/gameplay/BeeEntity.js';
+
 import { BeePlayer } from './src/gameplay/BeePlayer.js';
 import { BeeNemico } from './src/gameplay/BeeNemico.js';
 import { BeeEnemyShooter } from './src/gameplay/BeeEnemyShooter.js';
