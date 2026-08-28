@@ -1,31 +1,31 @@
 import { BeeEntity } from '../core/BeeEntity.js';
-import { BeeAnimatedSprite } from '../graphics/BeeAnimatedSprite.js';
-import { BeeSpriteSheet } from '../graphics/BeeSpriteSheet.js';
+
 /**
- * Classe BeePlayer: Il personaggio giocabile principale del motore.
- * Include gestione del punteggio, delle vite, movimenti sia per giochi Volanti/Arcade che Platformer (Salto + Gravità).
+ * BeePlayer: Base playable character entity for 2D platformer and arcade games.
+ * Supports score, lives, movement modes (platformer vs free 360 flight), and custom animations.
  */
 export class BeePlayer extends BeeEntity {
-    constructor(x = 100, y = 100, width = 40, height = 40, textureKey = 'ape') {
+    /**
+     * @param {number} [x=100] 
+     * @param {number} [y=100] 
+     * @param {number} [width=40] 
+     * @param {number} [height=40] 
+     * @param {string|null} [textureKey=null] 
+     */
+    constructor(x = 100, y = 100, width = 40, height = 40, textureKey = null) {
         super(x, y, width, height);
         this.speed = 220;
 
-        // Salviamo il valore di base per poterlo ripristinare all'occorrenza
         this.baseJumpForce = -420;
         this.jumpForce = this.baseJumpForce;
-
-        this.gravity = 500; // Gravità attiva per modalità platformer/salti
+        this.gravity = 500;
         this.textureKey = textureKey;
 
-        // Punteggio e Vite integrati
         this.score = 0;
         this.lives = 3;
-        this.mode = 'platformer'; // 'platformer' (salto+gravità) oppure 'free' (volo libero a 360°)
+        this.mode = 'platformer'; // 'platformer' or 'free'
     }
 
-    /**
-     * Esegue il salto se il giocatore si trova a terra (isGrounded)
-     */
     jump() {
         if (this.isGrounded || this.mode === 'free') {
             this.vy = this.jumpForce;
@@ -34,26 +34,37 @@ export class BeePlayer extends BeeEntity {
     }
 
     /**
-     * Aumenta la forza del salto. 
-     * @param {number} amount - Il valore da sommare alla potenza (es. 150 per saltare molto più in alto)
+     * Increases jump power permanently.
+     * @param {number} amount 
      */
-    potenziaSalto(amount) {
-        // Sottraiamo perché sull'asse Y i numeri negativi vanno verso l'alto
+    boostJump(amount) {
         this.jumpForce = this.baseJumpForce - amount;
     }
 
     /**
-     * Aumenta la forza del salto solo per un determinato periodo di tempo.
-     * @param {number} amount - Il valore del bonus (es. 150)
-     * @param {number} durationMs - Durata in millisecondi (es. 5000 per 5 secondi)
+     * Legacy alias for boostJump
      */
-    potenziaSaltoTemporaneo(amount, durationMs) {
-        this.potenziaSalto(amount);
+    potenziaSalto(amount) {
+        this.boostJump(amount);
+    }
 
-        // Ritorna al salto normale dopo che il tempo è scaduto
+    /**
+     * Temporarily boosts jump power for a duration in milliseconds.
+     * @param {number} amount 
+     * @param {number} durationMs 
+     */
+    boostJumpTemporary(amount, durationMs) {
+        this.boostJump(amount);
         setTimeout(() => {
             this.jumpForce = this.baseJumpForce;
         }, durationMs);
+    }
+
+    /**
+     * Legacy alias for boostJumpTemporary
+     */
+    potenziaSaltoTemporaneo(amount, durationMs) {
+        this.boostJumpTemporary(amount, durationMs);
     }
 
     addScore(points) {
@@ -68,62 +79,45 @@ export class BeePlayer extends BeeEntity {
     update(dt, input, engine) {
         if (!input) return;
 
-        // Movimento Orizzontale
         this.vx = 0;
         if (input.isPressed("ArrowRight") || input.isPressed("KeyD")) this.vx = this.speed;
         if (input.isPressed("ArrowLeft") || input.isPressed("KeyA")) this.vx = -this.speed;
 
-        // Movimento in base alla modalità di gioco
         if (this.mode === 'platformer') {
-            // Salto con Spazio, Frecce o Touch
-            if (input.wasPressed("Space") || input.wasPressed("ArrowUp") || input.wasPressed("KeyW") || input.mouse.wasPressed) {
+            if (input.wasPressed("Space") || input.wasPressed("ArrowUp") || input.wasPressed("KeyW")) {
                 this.jump();
             }
         } else {
-            // Volo libero (Modalità Arcade / Flying)
             if (input.isPressed("ArrowDown") || input.isPressed("KeyS")) this.vy = this.speed;
             else if (input.isPressed("ArrowUp") || input.isPressed("KeyW")) this.vy = -this.speed;
             else this.vy = 0;
         }
 
-        // Applica gravità e aggiorna posizione tramite classe base BeeEntity
         super.update(dt, input, engine);
     }
 
     draw(ctx, engine) {
-        // 1. PRIMA DI TUTTO: Se ha uno sprite animato, disegna SOLO quello ed esci!
         if (this.sprite) {
-            // Gestione opzionale della direzione (flipX)
             if (this.vx < 0) this.sprite.flipX = true;
             if (this.vx > 0) this.sprite.flipX = false;
 
             this.sprite.draw(ctx, this.x, this.y, { width: this.width, height: this.height });
-            return; // Exit fondamentale: non disegna il pallino giallo!
+            return;
         }
 
-        // 2. Se ha una singola texture immagine standard
         const texture = (engine && this.textureKey) ? engine.getAsset(this.textureKey) : null;
         if (texture) {
             ctx.drawImage(texture, this.x, this.y, this.width, this.height);
             return;
         }
 
-        // 3. FALLBACK VETTORIALE (Usato solo se NON ci sono sprite né immagini)
-        ctx.fillStyle = "#FFD700"; // Giallo miele
-        ctx.beginPath();
-        ctx.arc(this.x + this.width / 2, this.y + this.height / 2, this.width / 2, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Strisce nere dell'ape
-        ctx.fillStyle = "#000000";
-        ctx.fillRect(this.x + 10, this.y + 8, 5, 24);
-        ctx.fillRect(this.x + 22, this.y + 8, 5, 24);
-
-        // Occhio
-        ctx.fillStyle = "#FFFFFF";
-        ctx.beginPath();
-        ctx.arc(this.x + 30, this.y + 14, 4, 0, Math.PI * 2);
-        ctx.fill();
+        // Generic vector fallback shape (clean rounded rectangle with outline)
+        ctx.save();
+        ctx.fillStyle = "#4A90E2";
+        ctx.fillRect(this.x, this.y, this.width, this.height);
+        ctx.strokeStyle = "#FFFFFF";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(this.x, this.y, this.width, this.height);
+        ctx.restore();
     }
 }
-
