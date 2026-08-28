@@ -1,13 +1,13 @@
 /**
- * BeeEngine 2D — definizioni TypeScript per autocompletamento IDE e consumo npm.
+ * BeeEngine 2D — TypeScript definitions for IDE autocompletion and NPM package consumption.
  * @packageDocumentation
  */
 
 // ---------------------------------------------------------------------------
-// Tipi condivisi
+// Shared Types
 // ---------------------------------------------------------------------------
 
-/** Rettangolo axis-aligned (AABB) in coordinate mondo o schermo. */
+/** Axis-aligned bounding box (AABB) in world or screen coordinates. */
 export interface BeeRect {
   x: number;
   y: number;
@@ -15,21 +15,21 @@ export interface BeeRect {
   height: number;
 }
 
-/** Voce del manifest risorse (immagini / audio / JSON). */
+/** Asset manifest item (images / audio / JSON). */
 export interface BeeManifestItem {
   type: "image" | "audio" | "json";
   name: string;
   src: string;
 }
 
-/** Caricamento risorse raggruppato per tipo. */
+/** Asset list grouped by type. */
 export interface BeeAssetList {
   images?: Array<{ name: string; src: string }>;
   sounds?: Array<{ name: string; src: string }>;
   jsons?: Array<{ name: string; src: string }>;
 }
 
-/** Scena registrabile nel {@link BeeSceneManager}. */
+/** Scene registered in {@link BeeSceneManager}. */
 export interface BeeScene {
   entities?: BeeEntity[];
   engine?: BeeEngine;
@@ -66,17 +66,17 @@ export type BeeOverlapCallback = (
 // ---------------------------------------------------------------------------
 
 export declare class BeeRectCollider {
-  entity: BeeEntity;
+  entity: BeeEntity | null;
   offsetX: number;
   offsetY: number;
   width: number;
   height: number;
 
   constructor(
-    entity: BeeEntity,
-    offsetX?: number,
-    offsetY?: number,
-    width?: number | null,
+    entityOrX?: BeeEntity | number,
+    offsetYOrY?: number,
+    widthOrW?: number | null,
+    heightOrH?: number | null,
     height?: number | null
   );
 
@@ -167,7 +167,7 @@ export declare class BeeInput {
 
   constructor(canvas: HTMLCanvasElement);
 
-  getMousePosition(e: MouseEvent): { x: number; y: number };
+  getCanvasPosition(clientX: number, clientY: number): { x: number; y: number };
   isPressed(key: string): boolean;
   wasPressed(key: string): boolean;
   setKey(key: string, value: boolean): void;
@@ -230,10 +230,6 @@ export declare class BeeCamera {
 export declare class BeeCollisionSystem {
   engine: BeeEngine;
   groups: Map<string, object[]>;
-  rules: Array<
-    | { type: "solid"; movers: string; solids: string }
-    | { type: "overlap"; a: string; b: string; callback: BeeOverlapCallback }
-  >;
 
   constructor(engine: BeeEngine);
 
@@ -248,14 +244,14 @@ export declare class BeeCollisionSystem {
 }
 
 // ---------------------------------------------------------------------------
-// BeePlayer, nemici, proiettili, piattaforme
+// Gameplay Entities (BeePlayer, BeeEnemy, BeeBullet, BeePlatform, BeeCollectible)
 // ---------------------------------------------------------------------------
 
 export declare class BeePlayer extends BeeEntity {
   speed: number;
   baseJumpForce: number;
   jumpForce: number;
-  textureKey: string;
+  textureKey: string | null;
   score: number;
   lives: number;
   mode: BeePlayerMode;
@@ -265,11 +261,13 @@ export declare class BeePlayer extends BeeEntity {
     y?: number,
     width?: number,
     height?: number,
-    textureKey?: string
+    textureKey?: string | null
   );
 
   jump(): void;
+  boostJump(amount: number): void;
   potenziaSalto(amount: number): void;
+  boostJumpTemporary(amount: number, durationMs: number): void;
   potenziaSaltoTemporaneo(amount: number, durationMs: number): void;
   addScore(points: number): void;
   takeDamage(amount?: number): boolean;
@@ -278,9 +276,11 @@ export declare class BeePlayer extends BeeEntity {
   draw(ctx: CanvasRenderingContext2D, engine?: BeeEngine): void;
 }
 
-export declare class BeeNemico extends BeeEntity {
-  velocita: number;
+export declare class BeeEnemy extends BeeEntity {
+  speed: number;
   textureKey: string | null;
+  minX: number | null;
+  maxX: number | null;
 
   constructor(
     x: number,
@@ -290,11 +290,14 @@ export declare class BeeNemico extends BeeEntity {
     textureKey?: string | null
   );
 
-  update(dt: number): void;
+  setPatrolBounds(minX: number | null, maxX: number | null): void;
+  update(dt: number, input?: BeeInput, engine?: BeeEngine): void;
   draw(ctx: CanvasRenderingContext2D, engine?: BeeEngine): void;
 }
 
-export declare class BeeEnemyShooter extends BeeNemico {
+export type BeeNemico = BeeEnemy;
+
+export declare class BeeEnemyShooter extends BeeEnemy {
   shootInterval: number;
   shootTimer: number;
   bulletSpeed: number;
@@ -314,6 +317,8 @@ export declare class BeeEnemyShooter extends BeeNemico {
 
 export declare class BeeBullet extends BeeEntity {
   textureKey: string | null;
+  lifespan: number;
+  age: number;
 
   constructor(
     x: number,
@@ -322,10 +327,11 @@ export declare class BeeBullet extends BeeEntity {
     vy?: number,
     width?: number,
     height?: number,
-    textureKey?: string | null
+    textureKey?: string | null,
+    lifespan?: number
   );
 
-  update(dt: number): void;
+  update(dt: number, input?: BeeInput, engine?: BeeEngine): void;
   draw(ctx: CanvasRenderingContext2D, engine?: BeeEngine): void;
 }
 
@@ -345,31 +351,27 @@ export declare class BeePlatform extends BeeEntity {
   draw(ctx: CanvasRenderingContext2D, engine?: BeeEngine): void;
 }
 
-export declare class BeeCollectible {
+export declare class BeeCollectible extends BeeEntity {
   canvasWidth: number;
   canvasHeight: number;
-  textureKey: string;
-  width: number;
-  height: number;
-  x: number;
-  y: number;
-  velocita: number;
+  textureKey: string | null;
+  speed: number;
 
   constructor(
-    canvasWidth: number,
-    canvasHeight: number,
-    textureKey?: string,
+    canvasWidth?: number,
+    canvasHeight?: number,
+    textureKey?: string | null,
     width?: number,
     height?: number
   );
 
   reset(): void;
-  update(dt: number): void;
-  draw(ctx: CanvasRenderingContext2D, engine: BeeEngine): void;
+  update(dt: number, input?: BeeInput, engine?: BeeEngine): void;
+  draw(ctx: CanvasRenderingContext2D, engine?: BeeEngine): void;
 }
 
 // ---------------------------------------------------------------------------
-// UI e testo
+// UI & Text
 // ---------------------------------------------------------------------------
 
 export interface BeeButtonOptions {
@@ -386,17 +388,7 @@ export interface BeeButtonOptions {
   onClick?: (button: BeeButton, scene?: unknown) => void;
 }
 
-export interface BeeButtonMouseState {
-  x: number;
-  y: number;
-  down: boolean;
-  pressed: boolean;
-  released: boolean;
-}
-
 export declare class BeeButton extends BeeEntity {
-  static mouse: BeeButtonMouseState;
-
   text: string;
   font: string;
   background: string;
@@ -407,13 +399,19 @@ export declare class BeeButton extends BeeEntity {
   hover: boolean;
   down: boolean;
 
-  static listen(canvas: HTMLCanvasElement): void;
-  static endFrame(): void;
-
   constructor(options?: BeeButtonOptions);
 
   update(dt: number, scene?: unknown): void;
   draw(ctx: CanvasRenderingContext2D): void;
+}
+
+export interface BeeHUDOptions {
+  scoreLabel?: string;
+  livesLabel?: string;
+  livesIcon?: string;
+  barHeight?: number;
+  titleColor?: string;
+  textColor?: string;
 }
 
 export declare class BeeText extends BeeEntity {
@@ -438,12 +436,13 @@ export declare class BeeText extends BeeEntity {
     ctx: CanvasRenderingContext2D,
     score?: number,
     lives?: number,
-    title?: string
+    title?: string,
+    options?: BeeHUDOptions
   ): void;
 }
 
 // ---------------------------------------------------------------------------
-// Tilemap, particelle, sprite, griglia
+// Tilemap, Particles, Sprite, Grid, Camera, Save, Touch & Controls
 // ---------------------------------------------------------------------------
 
 export interface BeeTilemapOptions {
@@ -547,10 +546,6 @@ export declare class BeeGrid {
   ): void;
 }
 
-// ---------------------------------------------------------------------------
-// Timer, save, menu, touch
-// ---------------------------------------------------------------------------
-
 export declare class BeeTimer {
   duration: number;
   callback: (() => void) | null;
@@ -588,35 +583,6 @@ export declare class BeeMenuScene implements BeeScene {
   draw(ctx: CanvasRenderingContext2D): void;
 }
 
-export interface BeeTouchButtonLayout {
-  key: string;
-  x: number;
-  y: number;
-}
-
-export declare class BeeTouchControls {
-  canvas: HTMLCanvasElement;
-  input: BeeInput;
-  btnSize: number;
-  margin: number;
-  buttons: Record<
-    "left" | "right" | "up" | "down" | "action",
-    BeeTouchButtonLayout
-  >;
-  activeTouches: Record<number, string>;
-
-  constructor(canvas: HTMLCanvasElement, input: BeeInput);
-
-  getButtonAt(x: number, y: number): string | null;
-  getCanvasCoords(touch: Touch): { x: number; y: number };
-  handleTouch(e: TouchEvent): void;
-  handleTouchEnd(e: TouchEvent): void;
-  draw(ctx: CanvasRenderingContext2D): void;
-}
-// ---------------------------------------------------------------------------
-// Nuove Classi Aggiunte (Sprite, Map, Touch & Controls)
-// ---------------------------------------------------------------------------
-
 export declare class BeeJoystick {
   canvas: HTMLCanvasElement;
   x: number;
@@ -627,13 +593,7 @@ export declare class BeeJoystick {
   angle: number;
   distance: number;
 
-  constructor(options?: {
-    canvas?: HTMLCanvasElement;
-    x?: number;
-    y?: number;
-    radius?: number;
-    handleRadius?: number;
-  });
+  constructor(canvas: HTMLCanvasElement, input: BeeInput);
 
   update(): void;
   draw(ctx: CanvasRenderingContext2D): void;
@@ -652,16 +612,16 @@ export declare class BeeSpriteSheet {
     image: HTMLImageElement,
     frameWidth: number,
     frameHeight: number,
-    options?: { col?: number; row?: number; framesPerRow?: number; frameCount?: number }
+    options?: { col?: number; row?: number; framesPerRow?: number; frameCount?: number; offsetX?: number; offsetY?: number }
   );
 
   drawFrame(
     ctx: CanvasRenderingContext2D,
     frameIndex: number,
-    x: number,
-    y: number,
-    width?: number,
-    height?: number
+    destX: number,
+    destY: number,
+    destW: number,
+    destH: number
   ): void;
 }
 
@@ -687,7 +647,16 @@ export declare class BeeAnimatedSprite {
 }
 
 export declare class BeeTilemapLoader {
-  static loadJSON(url: string): Promise<any>;
+  engine: BeeEngine;
+  solidColliders: BeeRectCollider[];
+  isLoaded: boolean;
+
+  constructor(engine: BeeEngine);
+
+  preloadAssets(mapJson: any, basePath?: string): Promise<void>;
+  load(mapJson: any): void;
+  getColliders(): BeeRectCollider[];
+  render(ctx: CanvasRenderingContext2D): void;
 }
 
 export declare class BeeVirtualDPad {
@@ -696,18 +665,18 @@ export declare class BeeVirtualDPad {
   y: number;
   size: number;
   eightWay: boolean;
-  dir: { x: number; y: number };
+  state: { up: boolean; down: boolean; left: boolean; right: boolean };
 
-  constructor(options?: {
-    canvas?: HTMLCanvasElement;
-    x?: number;
-    y?: number;
+  constructor(options: {
+    canvas: HTMLCanvasElement;
+    x: number;
+    y: number;
     size?: number;
     eightWay?: boolean;
   });
 
-  update(): void;
-  draw(ctx: CanvasRenderingContext2D): void;
+  resetState(): void;
+  render(ctx: CanvasRenderingContext2D): void;
 }
 
 export declare class BeeTouchButton {
@@ -718,20 +687,19 @@ export declare class BeeTouchButton {
   label: string;
   isPressed: boolean;
 
-  constructor(options?: {
-    canvas?: HTMLCanvasElement;
-    x?: number;
-    y?: number;
+  constructor(options: {
+    canvas: HTMLCanvasElement;
+    x: number;
+    y: number;
     radius?: number;
     label?: string;
   });
 
-  update(): void;
-  draw(ctx: CanvasRenderingContext2D): void;
+  render(ctx: CanvasRenderingContext2D): void;
 }
 
 // ---------------------------------------------------------------------------
-// BeeEngine (core)
+// BeeEngine (Core)
 // ---------------------------------------------------------------------------
 
 export declare class BeeEngine {
@@ -750,16 +718,12 @@ export declare class BeeEngine {
   isRunning: boolean;
   isPaused: boolean;
   animationFrameId: number | null;
-  touchControls?: BeeTouchControls;
-  virtualDPad?: BeeVirtualDPad;
+  touchControls?: BeeTouchControls | BeeJoystick;
 
-
-  /** Callback di update impostati con {@link BeeEngine.start}. */
   update?: BeeGameLoopCallback;
-  /** Callback di render impostati con {@link BeeEngine.start}. */
   render?: BeeRenderCallback;
 
-  constructor(canvasId: string, width: number, height: number);
+  constructor(canvasId: string | HTMLCanvasElement, width?: number, height?: number);
 
   enableAutoResize(
     baseWidth?: number,
@@ -768,19 +732,26 @@ export declare class BeeEngine {
   ): void;
 
   setScene(name: string, data?: unknown): void;
-  lockOrientation(): void;
+  lockOrientation(orientation?: string): void;
   pause(): void;
   resume(): void;
   stop(): void;
   destroy(): void;
 
-  enableJoystick(options?: {
-    x?: number;
-    y?: number;
-    radius?: number;
-    handleRadius?: number;
-  }): BeeJoystick;
+  enableJoystick(options?: object): BeeJoystick;
   enableTouchControls(): BeeTouchControls;
+
+  createSpriteSheet(
+    image: HTMLImageElement,
+    frameWidth: number,
+    frameHeight: number,
+    config?: object
+  ): BeeSpriteSheet;
+
+  createAnimatedSprite(
+    spriteSheet: BeeSpriteSheet,
+    config?: object
+  ): BeeAnimatedSprite;
 
   start(
     updateCallback?: BeeGameLoopCallback,
@@ -797,24 +768,13 @@ export declare class BeeEngine {
   updateEntities(dt: number, input: BeeInput): void;
   renderEntities(ctx: CanvasRenderingContext2D): void;
   getEntityDrawBounds(entity: BeeEntity): BeeRect | null;
-  isRectVisibleInView(
-    x: number,
-    y: number,
-    width: number,
-    height: number
-  ): boolean;
+  isRectVisibleInView(x: number, y: number, width: number, height: number): boolean;
   drawEntity(ctx: CanvasRenderingContext2D, entity: BeeEntity): void;
   checkCollision(rect1: BeeRect, rect2: BeeRect): boolean;
 
-  loadAsset(
-    type: "image" | "audio" | "json",
-    name: string,
-    src: string
-  ): Promise<HTMLImageElement | HTMLAudioElement | any>;
-
+  loadAsset(type: string, name: string, src: string): Promise<any>;
   loadManifest(manifest: BeeManifestItem[]): Promise<void>;
-  getAsset(name: string): HTMLImageElement | HTMLAudioElement | any | undefined;
-
+  getAsset(name: string): any;
   playSound(audioAsset: HTMLAudioElement): void;
   playMusic(audioAsset: HTMLAudioElement, volume?: number): void;
 }

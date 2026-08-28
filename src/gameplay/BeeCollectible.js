@@ -1,64 +1,59 @@
+import { BeeEntity } from '../core/BeeEntity.js';
+
 /**
- * Classe che gestisce gli oggetti collezionabili (monete, miele, bonus) che cadono dall'alto.
- * Si riposiziona automaticamente in cima allo schermo quando viene raccolto o cade oltre il bordo.
- * 
- * @class BeeCollectible
- * @param {number} canvasWidth - Larghezza del canvas di gioco per il calcolo dei bordi X.
- * @param {number} canvasHeight - Altezza del canvas di gioco per il calcolo del reset Y.
- * @param {string} [textureKey='mieleImg'] - La chiave dell'asset grafico caricato nell'AssetManager.
- * @param {number} [width=20] - Larghezza dell'oggetto in pixel.
- * @param {number} [height=20] - Altezza dell'oggetto in pixel.
+ * BeeCollectible: Generic falling item / bonus entity.
+ * Resets position to top of screen when collected or falling past the screen bottom.
  */
-export class BeeCollectible {
-    constructor(canvasWidth, canvasHeight, textureKey = 'mieleImg', width = 20, height = 20) {
+export class BeeCollectible extends BeeEntity {
+    /**
+     * @param {number} [canvasWidth=800] 
+     * @param {number} [canvasHeight=600] 
+     * @param {string|null} [textureKey=null] 
+     * @param {number} [width=20] 
+     * @param {number} [height=20] 
+     */
+    constructor(canvasWidth = 800, canvasHeight = 600, textureKey = null, width = 20, height = 20) {
+        super(0, 0, width, height);
         this.canvasWidth = canvasWidth;
         this.canvasHeight = canvasHeight;
         this.textureKey = textureKey;
-        this.width = width;
-        this.height = height;
+        this.speed = 150;
         this.reset();
     }
 
-    /**
-     * Riposiziona l'oggetto in cima allo schermo in una coordinata X casuale
-     * e gli assegna una velocità di caduta random.
-     */
     reset() {
-        this.x = Math.random() * (this.canvasWidth - this.width);
+        this.x = Math.random() * Math.max(1, this.canvasWidth - this.width);
         this.y = -this.height;
-        this.velocita = 2 + Math.random() * 3;
+        this.speed = 100 + Math.random() * 150;
     }
 
-    /**
-     * Aggiorna la posizione Y dell'oggetto facendolo cadere.
-     * Se supera il bordo inferiore, esegue il reset.
-     * @param {number} dt - Delta time per la fluidità del movimento.
-     */
-    update(dt) {
-        this.y += this.velocita;
+    update(dt, input, engine) {
+        this.y += this.speed * dt;
 
         if (this.y > this.canvasHeight) {
             this.reset();
         }
+
+        super.update(dt, input, engine);
     }
 
-    /**
-     * Disegna l'immagine dell'oggetto sul canvas tramite l'AssetManager.
-     * In caso di mancato caricamento dell'asset, mostra un cerchio vettoriale di backup.
-     * @param {CanvasRenderingContext2D} ctx - Il contesto grafico 2D del Canvas.
-     * @param {BeeEngine} engine - L'istanza principale del motore per recuperare gli asset.
-     */
     draw(ctx, engine) {
-        const texture = (engine && typeof engine.getAsset === 'function') ? engine.getAsset(this.textureKey) : null;
+        const texture = (engine && this.textureKey && typeof engine.getAsset === 'function')
+            ? engine.getAsset(this.textureKey)
+            : null;
 
         if (texture) {
             ctx.drawImage(texture, this.x, this.y, this.width, this.height);
         } else {
+            ctx.save();
             ctx.fillStyle = '#FFA500';
             ctx.beginPath();
             ctx.arc(this.x + this.width / 2, this.y + this.height / 2, this.width / 2, 0, Math.PI * 2);
             ctx.fill();
-            ctx.closePath();
+            ctx.strokeStyle = '#FFFFFF';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            ctx.restore();
         }
     }
 }

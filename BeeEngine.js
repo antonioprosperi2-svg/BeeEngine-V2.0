@@ -1,5 +1,5 @@
 // ==========================================
-// 1. CORE & SISTEMI BASE (src/core/)
+// 1. CORE & BASE SYSTEMS (src/core/)
 // ==========================================
 import { BeeAssetManager } from './src/core/BeeAssetManager.js';
 import { BeeEntity } from './src/core/BeeEntity.js';
@@ -9,7 +9,7 @@ import { BeeTimer } from './src/core/BeeTimer.js';
 import { BeeGrid } from './src/core/BeeGrid.js';
 
 // ==========================================
-// 2. INPUT & CONTROLLI TOUCH (src/input/)
+// 2. INPUT & TOUCH CONTROLS (src/input/)
 // ==========================================
 import { BeeInput } from './src/input/BeeInput.js';
 import { BeeTouchControls } from './src/input/BeeTouchControls.js';
@@ -19,7 +19,7 @@ import { BeeJoystick } from './src/input/BeeJoystick.js';
 import { BeeButton } from './src/input/BeeButton.js';
 
 // ==========================================
-// 3. GRAFICA & RENDERING (src/graphics/)
+// 3. GRAPHICS & RENDERING (src/graphics/)
 // ==========================================
 import { BeeSprite } from './src/graphics/BeeSprite.js';
 import { BeeSpriteSheet } from './src/graphics/BeeSpriteSheet.js';
@@ -31,35 +31,38 @@ import { BeeTilemapLoader } from './src/graphics/BeeTilemapLoader.js';
 import { BeeText } from './src/graphics/BeeText.js';
 
 // ==========================================
-// 4. FISICA & COLLISIONI (src/physics/)
+// 4. PHYSICS & COLLISIONS (src/physics/)
 // ==========================================
 import { BeeCollisionSystem } from './src/physics/BeeCollisionSystem.js';
 import { BeeRectCollider } from './src/physics/BeeRectCollider.js';
 import { BeeBullet } from './src/physics/BeeBullet.js';
 
 // ==========================================
-// 5. GAMEPLAY & ENTITÀ (src/gameplay/)
+// 5. GAMEPLAY & ENTITIES (src/gameplay/)
 // ==========================================
-
 import { BeePlayer } from './src/gameplay/BeePlayer.js';
-import { BeeNemico } from './src/gameplay/BeeNemico.js';
+import { BeeEnemy } from './src/gameplay/BeeEnemy.js';
 import { BeeEnemyShooter } from './src/gameplay/BeeEnemyShooter.js';
 import { BeeCollectible } from './src/gameplay/BeeCollectible.js';
 import { BeePlatform } from './src/gameplay/BeePlatform.js';
 import { BeeMenuScene } from './src/gameplay/BeeMenuScene.js';
 
-export class BeeEngine {
-    // Il cuore del tuo motore resta identico!
+// Backward compatibility alias
+const BeeNemico = BeeEnemy;
 
-    constructor(canvasId, width, height) {
-        this.canvas = document.getElementById(canvasId);
+export class BeeEngine {
+    constructor(canvasId, width = 800, height = 600) {
+        this.canvas = typeof canvasId === 'string' ? document.getElementById(canvasId) : canvasId;
+        if (!this.canvas) {
+            throw new Error(`BeeEngine: Canvas element not found: ${canvasId}`);
+        }
         this.ctx = this.canvas.getContext('2d');
         this.canvas.width = width;
         this.canvas.height = height;
 
         this.assets = new BeeAssetManager();
         this.input = new BeeInput(this.canvas);
-        this.scenes = new BeeSceneManager(this); // Sostituito la Map grezza con il SceneManager dedicato
+        this.scenes = new BeeSceneManager(this);
 
         this.entities = [];
         this.collisions = new BeeCollisionSystem(this);
@@ -73,31 +76,27 @@ export class BeeEngine {
         this.isPaused = false;
         this.animationFrameId = null;
 
-        this._startAudioHandler = null; // Riferimento per fare il cleanup dei listener audio
-
-        this.lockOrientation();
-
+        this._startAudioHandler = null;
+        this._resizeHandler = null;
         this.touchControls = null;
-    } // <-- QUESTA GRAFFA CHIUDE IL CONSTRUCTOR. Se manca questa, da' 29 errori!
+    }
 
     enableTouchControls() {
         if (this.touchControls && typeof this.touchControls.destroy === 'function') {
             this.touchControls.destroy();
         }
         this.touchControls = new BeeTouchControls(this.canvas, this.input);
+        return this.touchControls;
     }
 
-    enableJoystick() {
+    enableJoystick(options = {}) {
         if (this.touchControls && typeof this.touchControls.destroy === 'function') {
             this.touchControls.destroy();
         }
         this.touchControls = new BeeJoystick(this.canvas, this.input);
+        return this.touchControls;
     }
 
-    createSpriteSheet(image, frameWidth, frameHeight, config = {}) {
-        return new BeeSpriteSheet(image, frameWidth, frameHeight, config);
-
-    }
     createSpriteSheet(image, frameWidth, frameHeight, config = {}) {
         return new BeeSpriteSheet(image, frameWidth, frameHeight, config);
     }
@@ -105,14 +104,14 @@ export class BeeEngine {
     createAnimatedSprite(spriteSheet, config = {}) {
         return new BeeAnimatedSprite(spriteSheet, config);
     }
-    enableAutoResize(baseWidth = this.canvas.width, baseHeight = this.canvas.height, reservedHeight = 80) {
+
+    enableAutoResize(baseWidth = this.canvas.width, baseHeight = this.canvas.height, reservedHeight = 0) {
         this.canvas.style.display = 'block';
         this.canvas.style.margin = '0 auto';
 
         this._resizeHandler = () => {
             const windowWidth = window.innerWidth;
-            // Sottraggono lo spazio per i pulsanti HTML in basso/alto
-            const availableHeight = Math.max(200, window.innerHeight - reservedHeight);
+            const availableHeight = Math.max(100, window.innerHeight - reservedHeight);
 
             const targetRatio = baseWidth / baseHeight;
             const windowRatio = windowWidth / availableHeight;
@@ -133,44 +132,33 @@ export class BeeEngine {
         window.addEventListener('resize', this._resizeHandler);
         this._resizeHandler();
     }
-    // Metodo legacy mantenuto per compatibilità, delega al SceneManager
-    // NUOVO METODO (Pulito e agganciato al Manager)
-    setScene(name, data = null) {
-        // Svuota le entità globali ad ogni cambio di scena per evitare residui
-        this.entities = [];
 
-        // Delega il cambio al gestore delle scene
+    setScene(name, data = null) {
+        this.entities = [];
         if (this.scenes) {
             this.scenes.change(name, data);
         }
     }
 
-    lockOrientation() {
+    lockOrientation(orientation = 'landscape') {
         if (screen.orientation && screen.orientation.lock) {
-            screen.orientation.lock('landscape').catch(() => {
-                // Silentemente ignorato su dispositivi desktop che non supportano il lock dell'orientamento
-            });
+            screen.orientation.lock(orientation).catch(() => {});
         }
     }
 
     pause() {
         if (this.isRunning && !this.isPaused) {
             this.isPaused = true;
-            console.log('BeeEngine: Gioco in pausa');
         }
     }
 
     resume() {
-        // Se il motore è stato fermato (stop()), permetti di riavviare se abbiamo i callback salvati
         if (!this.isRunning) {
             if (this.update || this.render) {
                 this.isRunning = true;
                 this.isPaused = false;
                 this.lastTime = performance.now();
-                console.log('BeeEngine: Gioco ripreso (da stop)');
                 this.animationFrameId = requestAnimationFrame((timestamp) => this.loop(timestamp));
-            } else {
-                console.warn('BeeEngine: impossibile riprendere, nessun callback di update/render disponibile. Usa start() con i callback.');
             }
             return;
         }
@@ -178,7 +166,6 @@ export class BeeEngine {
         if (this.isRunning && this.isPaused) {
             this.isPaused = false;
             this.lastTime = performance.now();
-            console.log('BeeEngine: Gioco ripreso');
             this.animationFrameId = requestAnimationFrame((timestamp) => this.loop(timestamp));
         }
     }
@@ -190,7 +177,6 @@ export class BeeEngine {
             cancelAnimationFrame(this.animationFrameId);
             this.animationFrameId = null;
         }
-        console.log('BeeEngine: Gioco fermato');
     }
 
     destroy() {
@@ -203,27 +189,22 @@ export class BeeEngine {
             window.removeEventListener('keydown', this._startAudioHandler);
         }
 
-        // 🌟 Pulizia dell'evento di resize se attivo
         if (this._resizeHandler) {
             window.removeEventListener('resize', this._resizeHandler);
         }
-
-        console.log('BeeEngine: Risorse liberate e motore distrutto.');
     }
 
     start(updateCallback, renderCallback) {
         if (this.isRunning) return;
 
-        // Se vengono passati callback, salvali per poter riavviare dopo uno stop
         if (typeof updateCallback === 'function') this._savedUpdate = updateCallback;
         if (typeof renderCallback === 'function') this._savedRender = renderCallback;
 
-        // Usa i callback salvati se non passati come argomenti
         this.update = typeof updateCallback === 'function' ? updateCallback : this._savedUpdate;
         this.render = typeof renderCallback === 'function' ? renderCallback : this._savedRender;
 
         if (!this.update && !this.render && !this.scenes) {
-            console.warn('BeeEngine: Nessun callback di update/render o SceneManager fornito. Usa start(update, render) o aggiungi le scene.');
+            console.warn('BeeEngine: No update/render callback or SceneManager provided.');
             return;
         }
 
@@ -231,40 +212,32 @@ export class BeeEngine {
         this.isPaused = false;
         this.lastTime = performance.now();
         this.animationFrameId = requestAnimationFrame((timestamp) => this.loop(timestamp));
-        console.log('BeeEngine: Gioco avviato');
     }
 
     loop(timestamp) {
-        // 1. Se il gioco è stoppato, esce
         if (!this.isRunning) return;
 
-        // 2. Se è in PAUSA, ricarica il frame successivo ma non aggiorna né disegna
         if (this.isPaused) {
             this.animationFrameId = requestAnimationFrame((ts) => this.loop(ts));
             return;
         }
 
-        // 3. Calcolo e clamping del deltaTime
         if (!this.lastTime) this.lastTime = timestamp;
         let deltaTime = (timestamp - this.lastTime) / 1000;
         this.lastTime = timestamp;
 
         deltaTime = Math.min(deltaTime, 0.05);
 
-        // --- UPDATE ---
-        // Il SceneManager si occupa di aggiornare la scena attiva!
-        // In UPDATE:
         if (this.scenes) {
             this.scenes.update(deltaTime, this.input);
         }
-        // Aggiorna eventuali entità globali
+
         this.updateEntities(deltaTime, this.input);
 
         if (this.update) {
             this.update(deltaTime, this.input);
         }
 
-        // --- RENDER (con frustum culling tramite drawEntity / BeeCamera) ---
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         this.ctx.save();
 
@@ -272,7 +245,6 @@ export class BeeEngine {
             this.camera.apply(this.ctx);
         }
 
-        // Il SceneManager disegna la scena attiva!
         if (this.scenes) {
             this.scenes.draw(this.ctx);
         }
@@ -289,12 +261,10 @@ export class BeeEngine {
             this.touchControls.draw(this.ctx);
         }
 
-        // Reset degli input del frame
         this.input.endFrame();
-
-        // Richiesta del prossimo frame
         this.animationFrameId = requestAnimationFrame((ts) => this.loop(ts));
     }
+
     on(evento, callback) {
         if (!this.events[evento]) this.events[evento] = [];
         this.events[evento].push(callback);
@@ -305,6 +275,7 @@ export class BeeEngine {
             this.events[evento].forEach(callback => callback(dati));
         }
     }
+
     off(evento, callback) {
         if (!this.events[evento]) return;
         this.events[evento] = this.events[evento].filter(cb => cb !== callback);
@@ -331,9 +302,6 @@ export class BeeEngine {
         }
     }
 
-    /**
-     * Bounds di disegno in coordinate mondo (collider se presente, altrimenti x/y/width/height).
-     */
     getEntityDrawBounds(entity) {
         if (!entity) return null;
         if (entity.collider) {
@@ -352,32 +320,24 @@ export class BeeEngine {
         };
     }
 
-    /**
-     * Verifica visibilità in coordinate mondo rispetto alla telecamera (o al canvas se assente).
-     */
     isRectVisibleInView(x, y, width, height) {
         if (width <= 0 || height <= 0) return false;
 
-        // 1. Se hai una telecamera configurata, usiamo la telecamera!
         if (this.camera && typeof this.camera.isRectVisible === 'function') {
             return this.camera.isRectVisible(x, y, width, height);
         }
 
-        // 2. Se usi la telecamera manuale (cameraX)
         const cameraX = this.cameraX || 0;
+        const cameraY = this.cameraY || 0;
 
-        // 3. Permettiamo al disegno di estendersi molto più a destra (es. fino a 10.000 pixel!)
         return (
-            x < cameraX + 10000 &&
+            x < cameraX + this.canvas.width &&
             x + width > cameraX &&
-            y < this.canvas.height &&
-            y + height > 0
+            y < cameraY + this.canvas.height &&
+            y + height > cameraY
         );
     }
 
-    /**
-     * Disegna un'entità solo se rientra nel frustum della telecamera (culling).
-     */
     drawEntity(ctx, entity) {
         if (!entity || entity.visible === false || !entity.draw) return;
 
@@ -400,14 +360,13 @@ export class BeeEngine {
         if (type === 'json' && typeof this.assets.loadJSON === 'function') {
             return this.assets.loadJSON(name, src);
         }
-        return Promise.reject(new Error(`Tipo di asset non supportato: ${type}`));
+        return Promise.reject(new Error(`Unsupported asset type: ${type}`));
     }
 
     async loadManifest(manifest) {
         if (typeof this.assets.loadManifest === 'function') {
             return this.assets.loadManifest(manifest);
         }
-        // Fallback se il manager non ha ancora il metodo nativo
         const promises = manifest.map(a => this.loadAsset(a.type, a.name, a.src));
         return Promise.all(promises);
     }
@@ -422,7 +381,7 @@ export class BeeEngine {
     playSound(audioAsset) {
         if (!audioAsset) return;
         const soundClone = audioAsset.cloneNode();
-        soundClone.play().catch((err) => console.warn("Audio bloccato:", err));
+        soundClone.play().catch((err) => console.warn("Audio blocked:", err));
     }
 
     playMusic(audioAsset, volume = 0.5) {
@@ -430,7 +389,6 @@ export class BeeEngine {
         audioAsset.loop = true;
         audioAsset.volume = volume;
         audioAsset.play().catch(() => {
-            // Salviamo la funzione per poterla rimuovere nel destroy()
             this._startAudioHandler = () => {
                 audioAsset.play();
                 window.removeEventListener('click', this._startAudioHandler);
@@ -461,6 +419,7 @@ export {
     BeeSprite,
     BeeTouchControls,
     BeeInput,
+    BeeEnemy,
     BeeNemico,
     BeeEnemyShooter,
     BeePlatform,
@@ -473,16 +432,3 @@ export {
     BeeTouchButton,
     BeeVirtualDPad,
 };
-
-/** 🌟 Il ruolo di BeeEngine
- * È il cuore del motore di gioco.
- * Gestisce l'aggiornamento e il rendering delle entità.
- * Gestisce i controlli e gli input.
- * Carica e gestisce le risorse.
- * Coordina l'intero ciclo di vita dell'applicazione: aggiorna la logica (Update),
- * renderizza la grafica (Draw), gestisce gli input e carica le risorse (immagini/suoni).
- */
-
-
-
-

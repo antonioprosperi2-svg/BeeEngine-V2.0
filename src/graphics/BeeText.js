@@ -1,6 +1,7 @@
 import { BeeEntity } from '../core/BeeEntity.js';
+
 /**
- * Classe BeeText: Gestisce sia testi singoli che l'Interfaccia di Gioco (HUD) con Punteggio e Vite.
+ * BeeText: Renders single text elements and provides a customizable HUD layout.
  */
 export class BeeText extends BeeEntity {
     constructor(text = "", x = 0, y = 0, font = "bold 20px Arial", color = "#ffffff", align = "left") {
@@ -26,34 +27,46 @@ export class BeeText extends BeeEntity {
     }
 
     /**
-     * Metodo di comodo per disegnare una barra HUD completa (Punteggio + Vite) in cima al canvas
+     * Renders a customizable top HUD bar (Score + Lives + Title).
+     * @param {CanvasRenderingContext2D} ctx 
+     * @param {number} [score=0] 
+     * @param {number} [lives=3] 
+     * @param {string} [title="GAME"] 
+     * @param {Object} [options={}] Custom HUD options (scoreLabel, livesLabel, icon)
      */
-    static drawHUD(ctx, score = 0, lives = 3, title = 'BEEENGINE PLATFORMER') {
+    static drawHUD(ctx, score = 0, lives = 3, title = 'GAME', options = {}) {
+        const {
+            scoreLabel = 'SCORE',
+            livesLabel = 'LIVES',
+            livesIcon = '❤️ ',
+            barHeight = 45,
+            titleColor = '#FFD700',
+            textColor = '#FFFFFF'
+        } = options;
+
         ctx.save();
 
-        // Sfondo barra HUD superiore
         ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-        ctx.fillRect(0, 0, ctx.canvas.width, 45);
+        ctx.fillRect(0, 0, ctx.canvas.width, barHeight);
 
-        // Titolo
-        ctx.fillStyle = '#FFD700';
-        ctx.font = 'bold 18px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText(`🐝 ${title}`, ctx.canvas.width / 2, 28);
+        if (title) {
+            ctx.fillStyle = titleColor;
+            ctx.font = 'bold 18px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(title, ctx.canvas.width / 2, 28);
+        }
 
-        // Punteggio (Sinistra)
-        ctx.fillStyle = '#FFFFFF';
+        ctx.fillStyle = textColor;
         ctx.font = 'bold 18px monospace';
         ctx.textAlign = 'left';
         const formattedScore = String(score).padStart(6, '0');
-        ctx.fillText(`SCORE: ${formattedScore}`, 20, 28);
+        ctx.fillText(`${scoreLabel}: ${formattedScore}`, 20, 28);
 
-        // Vite (Destra con cuori)
         ctx.fillStyle = '#FF4444';
         ctx.font = '18px Arial';
         ctx.textAlign = 'right';
-        const hearts = '❤️ '.repeat(Math.max(0, lives));
-        ctx.fillText(`VITE: ${hearts || '💀'}`, ctx.canvas.width - 20, 28);
+        const hearts = livesIcon.repeat(Math.max(0, lives));
+        ctx.fillText(`${livesLabel}: ${hearts || '0'}`, ctx.canvas.width - 20, 28);
 
         ctx.restore();
     }

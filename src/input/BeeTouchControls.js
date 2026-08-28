@@ -16,10 +16,8 @@ export class BeeTouchControls {
 
         this.activeTouches = {};
 
-        // Aggiorna le posizioni dei tasti
         this.updatePositions();
 
-        // Listener per Ridimensionamento e Touch
         this.onResize = () => this.updatePositions();
         window.addEventListener('resize', this.onResize);
 
@@ -28,16 +26,14 @@ export class BeeTouchControls {
         canvas.addEventListener('touchend', (e) => this.handleTouchEnd(e), { passive: false });
         canvas.addEventListener('touchcancel', (e) => this.handleTouchEnd(e), { passive: false });
     }
+
     updatePositions() {
-        // Usa le dimensioni effettive di visualizzazione del canvas se quelle interne non sono aggiornate
         const rect = this.canvas.getBoundingClientRect();
 
-        // Se il gioco aggiorna internamente width/height usa quelli, altrimenti usa il rect
         const w = this.canvas.width || rect.width;
         const h = this.canvas.height || rect.height;
         const r = this.btnSize / 2;
 
-        // D-Pad a Sinistra (Frecce)
         this.buttons.left.x = this.margin + r;
         this.buttons.left.y = h - this.margin - r - this.btnSize;
 
@@ -50,14 +46,12 @@ export class BeeTouchControls {
         this.buttons.down.x = this.margin + r + this.btnSize;
         this.buttons.down.y = h - this.margin - r;
 
-        // Tasto SPARO / AZIONE a Destra
         this.buttons.action.x = w - this.margin - r;
         this.buttons.action.y = h - this.margin - r;
     }
 
     getCanvasCoords(touch) {
         const rect = this.canvas.getBoundingClientRect();
-        // Questo calcolo è corretto, ma fallisce se il canvas ha width/height a 0 nel CSS
         const canvasWidth = this.canvas.width || rect.width;
         const canvasHeight = this.canvas.height || rect.height;
 
@@ -67,17 +61,20 @@ export class BeeTouchControls {
         };
     }
 
-
-    getCanvasCoords(touch) {
-        const rect = this.canvas.getBoundingClientRect();
-        return {
-            x: (touch.clientX - rect.left) * (this.canvas.width / rect.width),
-            y: (touch.clientY - rect.top) * (this.canvas.height / rect.height)
-        };
+    getButtonAt(x, y) {
+        for (const name in this.buttons) {
+            const b = this.buttons[name];
+            const dx = x - b.x;
+            const dy = y - b.y;
+            if (dx * dx + dy * dy <= (this.btnSize / 2) * (this.btnSize / 2)) {
+                return name;
+            }
+        }
+        return null;
     }
 
     handleTouch(e) {
-        e.preventDefault();
+        if (e.cancelable) e.preventDefault();
         const stillActive = {};
 
         for (let touch of e.touches) {
@@ -97,7 +94,7 @@ export class BeeTouchControls {
     }
 
     handleTouchEnd(e) {
-        e.preventDefault();
+        if (e.cancelable) e.preventDefault();
         const stillActive = {};
 
         for (let touch of e.touches) {
@@ -120,19 +117,16 @@ export class BeeTouchControls {
             const b = this.buttons[name];
             const isActive = Object.values(this.activeTouches).includes(name);
 
-            // Sfondo Tasto
             ctx.globalAlpha = isActive ? 0.8 : 0.5;
             ctx.fillStyle = isActive ? '#ffffff' : '#666666';
             ctx.beginPath();
             ctx.arc(b.x, b.y, this.btnSize / 2, 0, Math.PI * 2);
             ctx.fill();
 
-            // Bordo Tasto
             ctx.lineWidth = 2;
             ctx.strokeStyle = '#ffffff';
             ctx.stroke();
 
-            // Simbolo Tasto
             ctx.globalAlpha = 1.0;
             ctx.fillStyle = isActive ? '#000000' : '#ffffff';
             ctx.font = 'bold 22px sans-serif';
@@ -140,7 +134,7 @@ export class BeeTouchControls {
             ctx.textBaseline = 'middle';
 
             const symbols = { left: '◀', right: '▶', up: '▲', down: '▼', action: '●' };
-            ctx.fillText(symbols[name], b.x, b.y);
+            ctx.fillText(symbols[name] || '●', b.x, b.y);
         }
 
         ctx.restore();

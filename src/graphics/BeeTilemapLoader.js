@@ -1,12 +1,11 @@
 import { BeeRectCollider } from '../physics/BeeRectCollider.js';
 
 /**
- * BeeEngine 2D Game Engine - Tilemap Loader Definitivo (v3.2)
- * Caricamento asset senza 404, Frustum Culling e Greedy Meshing 2D.
+ * BeeTilemapLoader: Preloads Tiled JSON asset paths and generates greedy-meshed solid colliders.
  */
 export class BeeTilemapLoader {
     /**
-     * @param {Object} engine Istanza del motore BeeEngine
+     * @param {Object} engine BeeEngine instance
      */
     constructor(engine) {
         this.engine = engine;
@@ -20,7 +19,7 @@ export class BeeTilemapLoader {
     }
 
     /**
-     * Pre-carica gli asset dal JSON senza tentativi a vuoto in console
+     * Preloads assets declared inside a Tiled JSON map.
      */
     async preloadAssets(mapJson, basePath = 'assets/') {
         if (!mapJson || !mapJson.tilesets) return;
@@ -39,7 +38,7 @@ export class BeeTilemapLoader {
                 if (this.engine.assets && typeof this.engine.assets.loadImage === 'function') {
                     loadPromises.push(
                         this.engine.assets.loadImage(imageName, cleanPath).catch(() => {
-                            console.warn(`⚠️ Impossibile caricare asset: ${cleanPath}`);
+                            console.warn(`⚠️ Failed to load asset: ${cleanPath}`);
                         })
                     );
                 }
@@ -61,7 +60,7 @@ export class BeeTilemapLoader {
     }
 
     /**
-     * Carica e analizza la struttura del file JSON di Tiled
+     * Parses Tiled JSON structure.
      */
     load(mapJson) {
         this.mapWidth = mapJson.width;
@@ -157,8 +156,11 @@ export class BeeTilemapLoader {
 
         if (
             layerName === 'solids' ||
+            layerName === 'solid' ||
             layerName === 'platforms' ||
-            layerName === 'livello tile 1'
+            layerName === 'platform' ||
+            layerName === 'terrain' ||
+            layerName === 'walls'
         ) {
             return true;
         }

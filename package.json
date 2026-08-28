@@ -1,10 +1,10 @@
 {
   "name": "beeengine",
   "version": "2.2.0",
-  "description": "Motore di gioco 2D modulare per HTML5 Canvas: fisica platformer, scene, input, asset, collisioni e HUD.",
+  "description": "Modular, universal 2D game engine for HTML5 Canvas: physics, scenes, input, touch controls, asset management, tilemaps and collision system.",
   "type": "module",
   "main": "./BeeEngine.js",
-  "module": "././BeeEngine.js",
+  "module": "./BeeEngine.js",
   "types": "./index.d.ts",
   "exports": {
     ".": {
