@@ -101,23 +101,22 @@ export class BeePlayer extends BeeEntity {
             if (this.vx < 0) this.sprite.flipX = true;
             if (this.vx > 0) this.sprite.flipX = false;
 
-            this.sprite.draw(ctx, this.x, this.y, { width: this.width, height: this.height });
+            this.sprite.draw(ctx, this.worldX, this.worldY, { width: this.width, height: this.height });
             return;
         }
 
         const texture = (engine && this.textureKey) ? engine.getAsset(this.textureKey) : null;
         if (texture) {
-            ctx.drawImage(texture, this.x, this.y, this.width, this.height);
+            ctx.drawImage(texture, this.worldX, this.worldY, this.width, this.height);
             return;
         }
 
-        // Generic vector fallback shape (clean rounded rectangle with outline)
         ctx.save();
         ctx.fillStyle = "#4A90E2";
-        ctx.fillRect(this.x, this.y, this.width, this.height);
+        ctx.fillRect(this.worldX, this.worldY, this.width, this.height);
         ctx.strokeStyle = "#FFFFFF";
         ctx.lineWidth = 2;
-        ctx.strokeRect(this.x, this.y, this.width, this.height);
+        ctx.strokeRect(this.worldX, this.worldY, this.width, this.height);
         ctx.restore();
     }
 }

@@ -91,22 +91,63 @@ export declare class BeeRectCollider {
 // BeeEntity
 // ---------------------------------------------------------------------------
 
+export interface BeeEntityPhysics {
+  width?: number;
+  height?: number;
+  gravity?: number;
+  friction?: number;
+  airFriction?: number;
+  landingTolerance?: number;
+  velocityLookahead?: number;
+  maxFallSpeed?: number;
+}
+
+export declare const BEE_ENTITY_DEFAULTS: Readonly<{
+  width: number;
+  height: number;
+  gravity: number;
+  friction: number;
+  airFriction: number;
+  landingTolerance: number;
+  velocityLookahead: number;
+  maxFallSpeed: number;
+}>;
+
 export declare class BeeEntity {
   x: number;
   y: number;
+  worldX: number;
+  worldY: number;
+  readonly parent: BeeEntity | null;
   width: number;
   height: number;
   vx: number;
   vy: number;
   gravity: number;
+  friction: number;
+  airFriction: number;
+  landingTolerance: number;
+  velocityLookahead: number;
+  maxFallSpeed: number;
   isGrounded: boolean;
   active: boolean;
   visible: boolean;
   destroyed: boolean;
   collider: BeeRectCollider | null;
-  children: BeeEntity[];
+  readonly children: BeeEntity[];
 
-  constructor(x?: number, y?: number, width?: number, height?: number);
+  constructor(
+    x?: number,
+    y?: number,
+    width?: number,
+    height?: number,
+    physics?: BeeEntityPhysics | null
+  );
+
+  static worldXOf(node: { worldX?: number; x?: number } | null | undefined): number;
+  static worldYOf(node: { worldY?: number; y?: number } | null | undefined): number;
+
+  getWorldAABB(): BeeRect;
 
   addRectCollider(
     offsetX?: number,
@@ -117,9 +158,11 @@ export declare class BeeEntity {
 
   addChild(entity: BeeEntity): BeeEntity;
   removeChild(entity: BeeEntity): void;
+  detach(): this;
   collidesWith(other: BeeEntity | BeeRect): boolean;
-  resolvePlatformCollision(platform: BeeEntity | BeePlatform): boolean;
+  resolvePlatformCollision(platform: BeeEntity | BeePlatform | BeeRect): boolean;
 
+  integrate(dt: number): void;
   update(dt: number, input?: BeeInput, engine?: BeeEngine): void;
   draw(ctx: CanvasRenderingContext2D, engine?: BeeEngine): void;
   destroy(): void;

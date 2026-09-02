@@ -22,15 +22,15 @@ export class BeeCollectible extends BeeEntity {
     }
 
     reset() {
-        this.x = Math.random() * Math.max(1, this.canvasWidth - this.width);
-        this.y = -this.height;
+        this.worldX = Math.random() * Math.max(1, this.canvasWidth - this.width);
+        this.worldY = -this.height;
         this.speed = 100 + Math.random() * 150;
     }
 
     update(dt, input, engine) {
         this.y += this.speed * dt;
 
-        if (this.y > this.canvasHeight) {
+        if (this.worldY > this.canvasHeight) {
             this.reset();
         }
 
@@ -42,13 +42,15 @@ export class BeeCollectible extends BeeEntity {
             ? engine.getAsset(this.textureKey)
             : null;
 
+        const wx = this.worldX;
+        const wy = this.worldY;
         if (texture) {
-            ctx.drawImage(texture, this.x, this.y, this.width, this.height);
+            ctx.drawImage(texture, wx, wy, this.width, this.height);
         } else {
             ctx.save();
             ctx.fillStyle = '#FFA500';
             ctx.beginPath();
-            ctx.arc(this.x + this.width / 2, this.y + this.height / 2, this.width / 2, 0, Math.PI * 2);
+            ctx.arc(wx + this.width / 2, wy + this.height / 2, this.width / 2, 0, Math.PI * 2);
             ctx.fill();
             ctx.strokeStyle = '#FFFFFF';
             ctx.lineWidth = 1;

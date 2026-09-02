@@ -24,11 +24,15 @@ export class BeeRectCollider {
     }
 
     get x() {
-        return this.entity ? (this.entity.x + this.offsetX) : this._staticX;
+        if (!this.entity) return this._staticX;
+        const origin = typeof this.entity.worldX === 'number' ? this.entity.worldX : this.entity.x;
+        return origin + this.offsetX;
     }
 
     get y() {
-        return this.entity ? (this.entity.y + this.offsetY) : this._staticY;
+        if (!this.entity) return this._staticY;
+        const origin = typeof this.entity.worldY === 'number' ? this.entity.worldY : this.entity.y;
+        return origin + this.offsetY;
     }
 
     intersects(other) {

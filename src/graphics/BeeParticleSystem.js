@@ -27,8 +27,8 @@ export class BeeParticleSystem extends BeeEntity {
             const size = sizeMin + Math.random() * (sizeMax - sizeMin);
 
             this.particles.push({
-                x: this.x,
-                y: this.y,
+                x: this.worldX,
+                y: this.worldY,
                 vx: Math.cos(angle) * speed,
                 vy: Math.sin(angle) * speed,
                 life,
@@ -67,8 +67,6 @@ export class BeeParticleSystem extends BeeEntity {
         }
 
         ctx.restore();
-
-        super.draw(ctx);
     }
 }
 /** 🌟 * Classe BeeParticleSystem: Gestisce gli effetti di particelle nel gioco.

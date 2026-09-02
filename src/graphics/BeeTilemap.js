@@ -30,8 +30,8 @@ export class BeeTilemap extends BeeEntity {
     }
 
     worldToTile(px, py) {
-        const col = Math.floor((px - this.x) / this.tileSize);
-        const row = Math.floor((py - this.y) / this.tileSize);
+        const col = Math.floor((px - this.worldX) / this.tileSize);
+        const row = Math.floor((py - this.worldY) / this.tileSize);
 
         return { col, row };
     }
@@ -70,19 +70,21 @@ export class BeeTilemap extends BeeEntity {
     draw(ctx, engine) {
         if (!this.visible) return;
 
+        const originX = this.worldX;
+        const originY = this.worldY;
         const mapW = this.cols * this.tileSize;
         const mapH = this.rows * this.tileSize;
 
-        if (engine && !engine.isRectVisibleInView(this.x, this.y, mapW, mapH)) {
+        if (engine && !engine.isRectVisibleInView(originX, originY, mapW, mapH)) {
             return;
         }
 
         const { viewLeft, viewTop, viewRight, viewBottom } = this.#getViewBounds(engine);
 
-        const startCol = Math.max(0, Math.floor((viewLeft - this.x) / this.tileSize));
-        const endCol = Math.min(this.cols - 1, Math.floor((viewRight - this.x) / this.tileSize));
-        const startRow = Math.max(0, Math.floor((viewTop - this.y) / this.tileSize));
-        const endRow = Math.min(this.rows - 1, Math.floor((viewBottom - this.y) / this.tileSize));
+        const startCol = Math.max(0, Math.floor((viewLeft - originX) / this.tileSize));
+        const endCol = Math.min(this.cols - 1, Math.floor((viewRight - originX) / this.tileSize));
+        const startRow = Math.max(0, Math.floor((viewTop - originY) / this.tileSize));
+        const endRow = Math.min(this.rows - 1, Math.floor((viewBottom - originY) / this.tileSize));
 
         for (let row = startRow; row <= endRow; row++) {
             for (let col = startCol; col <= endCol; col++) {
@@ -90,8 +92,8 @@ export class BeeTilemap extends BeeEntity {
 
                 if (tile === 0) continue;
 
-                const drawX = this.x + col * this.tileSize;
-                const drawY = this.y + row * this.tileSize;
+                const drawX = originX + col * this.tileSize;
+                const drawY = originY + row * this.tileSize;
 
                 if (engine && !engine.isRectVisibleInView(drawX, drawY, this.tileSize, this.tileSize)) {
                     continue;
@@ -100,8 +102,6 @@ export class BeeTilemap extends BeeEntity {
                 this.#renderTile(ctx, tile, drawX, drawY);
             }
         }
-
-        super.draw(ctx, engine);
     }
 
     #getViewBounds(engine) {

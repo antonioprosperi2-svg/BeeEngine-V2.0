@@ -13,8 +13,10 @@ export class BeeCamera {
     }
 
     follow(target, smooth = 0.1) {
-        let targetX = target.x + target.width / 2 - this.w / 2;
-        let targetY = target.y + target.height / 2 - this.h / 2;
+        const originX = typeof target.worldX === 'number' ? target.worldX : target.x;
+        const originY = typeof target.worldY === 'number' ? target.worldY : target.y;
+        let targetX = originX + target.width / 2 - this.w / 2;
+        let targetY = originY + target.height / 2 - this.h / 2;
 
         this.x += (targetX - this.x) * smooth;
         this.y += (targetY - this.y) * smooth;

@@ -22,7 +22,7 @@ export class BeeText extends BeeEntity {
         ctx.fillStyle = this.color;
         ctx.textAlign = this.align;
         ctx.textBaseline = this.baseline;
-        ctx.fillText(this.text, this.x, this.y);
+        ctx.fillText(this.text, this.worldX, this.worldY);
         ctx.restore();
     }
 

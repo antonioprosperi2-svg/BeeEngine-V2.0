@@ -33,10 +33,10 @@ export class BeeEnemy extends BeeEntity {
     update(dt, input, engine) {
         this.x += this.speed * dt;
 
-        if (this.maxX !== null && this.x > this.maxX) {
+        if (this.maxX !== null && this.worldX > this.maxX) {
             this.speed = -Math.abs(this.speed);
         }
-        if (this.minX !== null && this.x < this.minX) {
+        if (this.minX !== null && this.worldX < this.minX) {
             this.speed = Math.abs(this.speed);
         }
 
@@ -45,15 +45,17 @@ export class BeeEnemy extends BeeEntity {
 
     draw(ctx, engine) {
         const texture = (engine && this.textureKey) ? engine.getAsset(this.textureKey) : null;
+        const wx = this.worldX;
+        const wy = this.worldY;
         if (texture) {
-            ctx.drawImage(texture, this.x, this.y, this.width, this.height);
+            ctx.drawImage(texture, wx, wy, this.width, this.height);
         } else {
             ctx.save();
             ctx.fillStyle = '#ff4444';
-            ctx.fillRect(this.x, this.y, this.width, this.height);
+            ctx.fillRect(wx, wy, this.width, this.height);
             ctx.strokeStyle = '#ffffff';
             ctx.lineWidth = 1.5;
-            ctx.strokeRect(this.x, this.y, this.width, this.height);
+            ctx.strokeRect(wx, wy, this.width, this.height);
             ctx.restore();
         }
     }

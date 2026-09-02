@@ -24,8 +24,6 @@ export class BeeBullet extends BeeEntity {
     }
 
     update(dt, input, engine) {
-        this.x += this.vx * dt;
-        this.y += this.vy * dt;
         this.age += dt;
 
         if (this.lifespan > 0 && this.age >= this.lifespan) {
@@ -33,25 +31,25 @@ export class BeeBullet extends BeeEntity {
             return;
         }
 
+        super.update(dt, input, engine);
+
         if (engine && engine.canvas) {
             const margin = 200;
-            if (this.x < -margin || this.x > engine.canvas.width + margin ||
-                this.y < -margin || this.y > engine.canvas.height + margin) {
+            if (this.worldX < -margin || this.worldX > engine.canvas.width + margin ||
+                this.worldY < -margin || this.worldY > engine.canvas.height + margin) {
                 this.destroy();
             }
         }
-
-        super.update(dt, input, engine);
     }
 
     draw(ctx, engine) {
         const texture = (engine && this.textureKey) ? engine.getAsset(this.textureKey) : null;
         if (texture) {
-            ctx.drawImage(texture, this.x, this.y, this.width, this.height);
+            ctx.drawImage(texture, this.worldX, this.worldY, this.width, this.height);
         } else {
             ctx.save();
             ctx.fillStyle = "#FFD700";
-            ctx.fillRect(this.x, this.y, this.width, this.height);
+            ctx.fillRect(this.worldX, this.worldY, this.width, this.height);
             ctx.restore();
         }
     }

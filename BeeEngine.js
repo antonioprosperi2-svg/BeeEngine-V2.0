@@ -2,7 +2,7 @@
 // 1. CORE & BASE SYSTEMS (src/core/)
 // ==========================================
 import { BeeAssetManager } from './src/core/BeeAssetManager.js';
-import { BeeEntity } from './src/core/BeeEntity.js';
+import { BeeEntity, BEE_ENTITY_DEFAULTS } from './src/core/BeeEntity.js';
 import { BeeSceneManager } from './src/core/BeeSceneManager.js';
 import { BeeSave } from './src/core/BeeSave.js';
 import { BeeTimer } from './src/core/BeeTimer.js';
@@ -313,8 +313,8 @@ export class BeeEngine {
             };
         }
         return {
-            x: entity.x,
-            y: entity.y,
+            x: typeof entity.worldX === 'number' ? entity.worldX : entity.x,
+            y: typeof entity.worldY === 'number' ? entity.worldY : entity.y,
             width: entity.width ?? 0,
             height: entity.height ?? 0
         };
@@ -339,14 +339,21 @@ export class BeeEngine {
     }
 
     drawEntity(ctx, entity) {
-        if (!entity || entity.visible === false || !entity.draw) return;
+        if (!entity || entity.visible === false || entity.destroyed) return;
 
-        const bounds = this.getEntityDrawBounds(entity);
-        if (!this.isRectVisibleInView(bounds.x, bounds.y, bounds.width, bounds.height)) {
-            return;
+        if (typeof entity.draw === 'function') {
+            const bounds = this.getEntityDrawBounds(entity);
+            const hasSize = bounds.width > 0 && bounds.height > 0;
+            if (!hasSize || this.isRectVisibleInView(bounds.x, bounds.y, bounds.width, bounds.height)) {
+                entity.draw(ctx, this);
+            }
         }
 
-        entity.draw(ctx, this);
+        const children = entity.children;
+        if (!children || children.length === 0) return;
+        for (let i = 0; i < children.length; i++) {
+            this.drawEntity(ctx, children[i]);
+        }
     }
 
     checkCollision(rect1, rect2) {
@@ -401,6 +408,7 @@ export class BeeEngine {
 }
 
 export {
+    BEE_ENTITY_DEFAULTS,
     BeeSceneManager,
     BeeSave,
     BeeParticleSystem,

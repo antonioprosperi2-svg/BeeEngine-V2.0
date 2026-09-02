@@ -93,10 +93,10 @@ export class BeeButton extends BeeEntity {
         ctx.save();
 
         ctx.fillStyle = bg;
-        ctx.fillRect(this.x, this.y, this.width, this.height);
+        ctx.fillRect(this.worldX, this.worldY, this.width, this.height);
 
         ctx.strokeStyle = "white";
-        ctx.strokeRect(this.x, this.y, this.width, this.height);
+        ctx.strokeRect(this.worldX, this.worldY, this.width, this.height);
 
         ctx.font = this.font;
         ctx.fillStyle = this.color;
@@ -104,13 +104,11 @@ export class BeeButton extends BeeEntity {
         ctx.textBaseline = "middle";
         ctx.fillText(
             this.text,
-            this.x + this.width / 2,
-            this.y + this.height / 2
+            this.worldX + this.width / 2,
+            this.worldY + this.height / 2
         );
 
         ctx.restore();
-
-        super.draw(ctx);
     }
 }
 
