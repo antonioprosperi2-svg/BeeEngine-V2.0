@@ -3,6 +3,7 @@
 // ==========================================
 import { BeeAssetManager } from './src/core/BeeAssetManager.js';
 import { BeeEntity, BEE_ENTITY_DEFAULTS } from './src/core/BeeEntity.js';
+import { BeeTime, BEE_TIME_DEFAULTS } from './src/core/BeeTime.js';
 import { BeeSceneManager } from './src/core/BeeSceneManager.js';
 import { BeeSave } from './src/core/BeeSave.js';
 import { BeeTimer } from './src/core/BeeTimer.js';
@@ -66,14 +67,13 @@ export class BeeEngine {
 
         this.entities = [];
         this.collisions = new BeeCollisionSystem(this);
-        this.lastTime = 0;
+        this.time = new BeeTime();
         this.camera = null;
         this.grid = null;
         this.currentScene = null;
         this.events = {};
 
         this.isRunning = false;
-        this.isPaused = false;
         this.animationFrameId = null;
 
         this._startAudioHandler = null;
@@ -146,33 +146,48 @@ export class BeeEngine {
         }
     }
 
+    get isPaused() {
+        return this.time.paused;
+    }
+
+    set isPaused(value) {
+        if (value) this.time.pause();
+        else this.time.resume();
+    }
+
+    get lastTime() {
+        return this.time.lastTimestamp;
+    }
+
+    set lastTime(value) {
+        this.time.lastTimestamp = value;
+    }
+
     pause() {
-        if (this.isRunning && !this.isPaused) {
-            this.isPaused = true;
-        }
+        this.time.pause();
+        return this;
     }
 
     resume() {
-        if (!this.isRunning) {
-            if (this.update || this.render) {
-                this.isRunning = true;
-                this.isPaused = false;
-                this.lastTime = performance.now();
-                this.animationFrameId = requestAnimationFrame((timestamp) => this.loop(timestamp));
-            }
-            return;
-        }
+        this.time.resume();
 
-        if (this.isRunning && this.isPaused) {
-            this.isPaused = false;
-            this.lastTime = performance.now();
+        if (!this.isRunning && (this.update || this.render || this.scenes)) {
+            this.isRunning = true;
+            this.time.begin(performance.now());
             this.animationFrameId = requestAnimationFrame((timestamp) => this.loop(timestamp));
         }
+
+        return this;
+    }
+
+    setTimeScale(scale) {
+        this.time.setScale(scale);
+        return this;
     }
 
     stop() {
         this.isRunning = false;
-        this.isPaused = false;
+        this.time.pause();
         if (this.animationFrameId) {
             cancelAnimationFrame(this.animationFrameId);
             this.animationFrameId = null;
@@ -209,33 +224,27 @@ export class BeeEngine {
         }
 
         this.isRunning = true;
-        this.isPaused = false;
-        this.lastTime = performance.now();
+        this.time.resume();
+        this.time.begin(performance.now());
         this.animationFrameId = requestAnimationFrame((timestamp) => this.loop(timestamp));
     }
 
     loop(timestamp) {
         if (!this.isRunning) return;
 
-        if (this.isPaused) {
-            this.animationFrameId = requestAnimationFrame((ts) => this.loop(ts));
-            return;
+        this.time.tick(timestamp);
+        const dt = this.time.dt;
+
+        if (!this.time.paused) {
+            if (this.scenes) {
+                this.scenes.update(dt, this.input);
+            }
+
+            this.updateEntities(dt, this.input);
         }
-
-        if (!this.lastTime) this.lastTime = timestamp;
-        let deltaTime = (timestamp - this.lastTime) / 1000;
-        this.lastTime = timestamp;
-
-        deltaTime = Math.min(deltaTime, 0.05);
-
-        if (this.scenes) {
-            this.scenes.update(deltaTime, this.input);
-        }
-
-        this.updateEntities(deltaTime, this.input);
 
         if (this.update) {
-            this.update(deltaTime, this.input);
+            this.update(dt, this.input, this.time);
         }
 
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
@@ -409,6 +418,8 @@ export class BeeEngine {
 
 export {
     BEE_ENTITY_DEFAULTS,
+    BEE_TIME_DEFAULTS,
+    BeeTime,
     BeeSceneManager,
     BeeSave,
     BeeParticleSystem,

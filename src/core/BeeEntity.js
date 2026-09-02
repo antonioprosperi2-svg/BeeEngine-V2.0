@@ -295,7 +295,7 @@ export class BeeEntity {
      * e non tocca il canvas: è un aggiornamento di dati.
      */
     integrate(dt) {
-        if (!this.active || this.destroyed) return;
+        if (!this.active || this.destroyed || dt <= 0) return;
 
         if (this.gravity !== 0 && !this.isGrounded) {
             this.vy += this.gravity * dt;

@@ -1,6 +1,6 @@
 {
   "name": "beeengine",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "Modular, universal 2D game engine for HTML5 Canvas: physics, scenes, input, touch controls, asset management, tilemaps and collision system.",
   "type": "module",
   "main": "./BeeEngine.js",
@@ -12,11 +12,17 @@
       "import": "./BeeEngine.js",
       "default": "./BeeEngine.js"
     },
+    "./index.js": {
+      "types": "./index.d.ts",
+      "import": "./index.js",
+      "default": "./index.js"
+    },
     "./package.json": "./package.json"
   },
   "sideEffects": false,
   "files": [
     "BeeEngine.js",
+    "index.js",
     "src",
     "index.d.ts",
     "README.md"

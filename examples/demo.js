@@ -73,6 +73,14 @@ const mainScene = {
         }
 
         BeeText.drawHUD(ctx, this.player?.score || 0, this.player?.lives || 3, 'BEE ENGINE 2D DEMO');
+        ctx.fillStyle = '#ffd700';
+        ctx.font = '14px monospace';
+        ctx.textAlign = 'left';
+        ctx.fillText(
+            `${game.time.timeScale.toFixed(2)}x  game ${game.time.elapsed.toFixed(1)}s  real ${game.time.unscaledElapsed.toFixed(1)}s`,
+            20,
+            ctx.canvas.height - 16
+        );
     }
 };
 

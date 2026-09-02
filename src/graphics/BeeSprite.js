@@ -7,6 +7,9 @@ export class BeeSprite {
         this.speed = speed;
         this.frame = 0;
     }
+    /**
+     * @param {number} dt tempo di simulazione (scalato). In pausa è 0.
+     */
     update(dt) { this.frame += this.speed * dt; }
     draw(ctx, x, y) {
         // Calcola quale fotogramma (frame) mostrare

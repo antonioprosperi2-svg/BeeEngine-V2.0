@@ -24,6 +24,7 @@ export class BeePlayer extends BeeEntity {
         this.score = 0;
         this.lives = 3;
         this.mode = 'platformer'; // 'platformer' or 'free'
+        this._jumpBoostRemaining = 0;
     }
 
     jump() {
@@ -49,15 +50,13 @@ export class BeePlayer extends BeeEntity {
     }
 
     /**
-     * Temporarily boosts jump power for a duration in milliseconds.
+     * Temporarily boosts jump power for a duration in milliseconds (simulation time).
      * @param {number} amount 
      * @param {number} durationMs 
      */
     boostJumpTemporary(amount, durationMs) {
         this.boostJump(amount);
-        setTimeout(() => {
-            this.jumpForce = this.baseJumpForce;
-        }, durationMs);
+        this._jumpBoostRemaining = Math.max(0, durationMs) / 1000;
     }
 
     /**
@@ -78,6 +77,14 @@ export class BeePlayer extends BeeEntity {
 
     update(dt, input, engine) {
         if (!input) return;
+
+        if (this._jumpBoostRemaining > 0) {
+            this._jumpBoostRemaining -= dt;
+            if (this._jumpBoostRemaining <= 0) {
+                this._jumpBoostRemaining = 0;
+                this.jumpForce = this.baseJumpForce;
+            }
+        }
 
         this.vx = 0;
         if (input.isPressed("ArrowRight") || input.isPressed("KeyD")) this.vx = this.speed;

@@ -62,12 +62,14 @@ export class BeeSceneManager {
         if (!this.currentScene) return;
 
         if (this.currentScene.update) {
-            this.currentScene.update(dt, this.engine.input);
+            this.currentScene.update(dt, this.engine.input, this.engine);
         }
+
+        if (dt <= 0) return;
 
         for (const entity of this.currentScene.entities) {
             if (entity.active !== false && entity.update) {
-                entity.update(dt, this.engine.input);
+                entity.update(dt, this.engine.input, this.engine);
             }
         }
 

@@ -38,7 +38,7 @@ export interface BeeScene {
   exit?(): void;
   onEnter?(data?: unknown): void;
   onExit?(): void;
-  update?(dt: number, input?: BeeInput): void;
+  update?(dt: number, input?: BeeInput, engine?: BeeEngine): void;
   draw?(ctx: CanvasRenderingContext2D, engine?: BeeEngine): void;
 }
 
@@ -46,7 +46,8 @@ export type BeePlayerMode = "platformer" | "free";
 
 export type BeeGameLoopCallback = (
   dt: number,
-  input: BeeInput
+  input: BeeInput,
+  time?: BeeTime
 ) => void;
 
 export type BeeRenderCallback = (
@@ -593,16 +594,78 @@ export declare class BeeTimer {
   duration: number;
   callback: (() => void) | null;
   loop: boolean;
+  useUnscaledTime: boolean;
   time: number;
   running: boolean;
   finished: boolean;
+  readonly progress: number;
 
-  constructor(duration: number, callback?: (() => void) | null, loop?: boolean);
+  constructor(
+    duration: number,
+    callback?: (() => void) | null,
+    loop?: boolean,
+    options?: { useUnscaledTime?: boolean }
+  );
 
-  start(): void;
-  stop(): void;
-  reset(): void;
-  update(dt: number): void;
+  start(): this;
+  stop(): this;
+  reset(): this;
+  update(dtOrTime: number | BeeTime, time?: BeeTime | null): void;
+}
+
+export interface BeeTimeOptions {
+  maxDelta?: number;
+  timeScale?: number;
+  minTimeScale?: number;
+  maxTimeScale?: number;
+  fixedDelta?: number;
+  maxFixedSteps?: number;
+  fpsSampleWindow?: number;
+}
+
+export declare const BEE_TIME_DEFAULTS: Readonly<{
+  maxDelta: number;
+  timeScale: number;
+  minTimeScale: number;
+  maxTimeScale: number;
+  fixedDelta: number;
+  maxFixedSteps: number;
+  fpsSampleWindow: number;
+}>;
+
+export declare class BeeTime {
+  maxDelta: number;
+  minTimeScale: number;
+  maxTimeScale: number;
+  fixedDelta: number;
+  maxFixedSteps: number;
+  fpsSampleWindow: number;
+  rawDelta: number;
+  unscaledDt: number;
+  dt: number;
+  elapsed: number;
+  unscaledElapsed: number;
+  frameCount: number;
+  fps: number;
+  alpha: number;
+  lastTimestamp: number;
+  timeScale: number;
+  readonly paused: boolean;
+  readonly scaledDt: number;
+  readonly realDt: number;
+
+  constructor(options?: BeeTimeOptions);
+
+  delta(unscaled?: boolean): number;
+  setScale(value: number): this;
+  pause(): this;
+  resume(): this;
+  togglePause(): this;
+  now(): number;
+  begin(timestamp?: number): this;
+  reset(timestamp?: number): this;
+  tick(timestamp: number): this;
+  consumeFixedSteps(callback: (fixedDt: number) => void): number;
 }
 
 export declare class BeeSave {
@@ -753,6 +816,7 @@ export declare class BeeEngine {
   scenes: BeeSceneManager;
   entities: BeeEntity[];
   collisions: BeeCollisionSystem;
+  time: BeeTime;
   lastTime: number;
   camera: BeeCamera | null;
   grid: BeeGrid | null;
@@ -776,8 +840,9 @@ export declare class BeeEngine {
 
   setScene(name: string, data?: unknown): void;
   lockOrientation(orientation?: string): void;
-  pause(): void;
-  resume(): void;
+  pause(): this;
+  resume(): this;
+  setTimeScale(scale: number): this;
   stop(): void;
   destroy(): void;
 

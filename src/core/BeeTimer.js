@@ -1,8 +1,20 @@
+/**
+ * Timer di evento (cooldown, spawn, durata bonus).
+ * Di default avanza col tempo di SIMULAZIONE (dt scalato).
+ * `useUnscaledTime: true` lo rende immune a pausa e slow-motion (HUD, UI).
+ */
 export class BeeTimer {
-    constructor(duration, callback, loop = false) {
+    /**
+     * @param {number} duration secondi
+     * @param {(() => void)|null} [callback]
+     * @param {boolean} [loop=false]
+     * @param {{ useUnscaledTime?: boolean }} [options]
+     */
+    constructor(duration, callback = null, loop = false, options = {}) {
         this.duration = duration;
         this.callback = callback;
         this.loop = loop;
+        this.useUnscaledTime = options.useUnscaledTime === true;
 
         this.time = 0;
         this.running = false;
@@ -13,21 +25,46 @@ export class BeeTimer {
         this.time = 0;
         this.running = true;
         this.finished = false;
+        return this;
     }
 
     stop() {
         this.running = false;
+        return this;
     }
 
     reset() {
         this.time = 0;
         this.finished = false;
+        return this;
     }
 
-    update(dt) {
+    get progress() {
+        if (this.duration <= 0) return 1;
+        return Math.min(1, this.time / this.duration);
+    }
+
+    /**
+     * @param {number|{ dt?: number, unscaledDt?: number }} dtOrTime
+     * @param {{ dt?: number, unscaledDt?: number }|null} [time]
+     */
+    update(dtOrTime, time = null) {
         if (!this.running || this.finished) return;
 
-        this.time += dt;
+        let clock = time;
+        let fallbackDt = 0;
+
+        if (dtOrTime && typeof dtOrTime === 'object') {
+            clock = dtOrTime;
+        } else {
+            fallbackDt = Number(dtOrTime) || 0;
+        }
+
+        const step = this.useUnscaledTime
+            ? (clock && typeof clock.unscaledDt === 'number' ? clock.unscaledDt : fallbackDt)
+            : (clock && typeof clock.dt === 'number' ? clock.dt : fallbackDt);
+
+        this.time += step;
 
         if (this.time >= this.duration) {
             if (this.callback) {
@@ -35,7 +72,8 @@ export class BeeTimer {
             }
 
             if (this.loop) {
-                this.time = 0;
+                this.time -= this.duration;
+                if (this.time < 0) this.time = 0;
             } else {
                 this.finished = true;
                 this.running = false;
@@ -43,12 +81,3 @@ export class BeeTimer {
         }
     }
 }
-/** 🌟 Il ruolo di BeeTimer
- * Gestisce il tempo di un evento.
- * Può essere utilizzato per creare ritardi, animazioni o controlli di tempo.
- */
-/** 
- * Classe BeeTimer: Gestisce il tempo e i ritardi nel gioco.
- * Utilizzata per creare cooldown (es. tempo di ricarica dei colpi), 
- * durate di bonus/malus, spawn temporizzati dei nemici o animazioni.
- */

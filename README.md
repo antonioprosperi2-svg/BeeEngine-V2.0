@@ -1,14 +1,15 @@
-# 🐝 Motore di gioco 2D BeeEngine (v2.2.0 Professional)
+# 🐝 Motore di gioco 2D BeeEngine (v2.3.0 Professional)
 
 BeeEngine è un motore di gioco 2D leggero, modulare e altamente ottimizzato scritto in puro JavaScript moderno (ES Modules) per HTML5 Canvas.
-La versione 2.2 espande il motore introducendo controlli touch nativi e joystick virtuale per smartphone, architettura pronta per la distribuzione tramite NPM, ottimizzazioni avanzate per il risparmio della CPU e un sistema di collisioni centralizzato.
+La versione 2.3 introduce **BeeTime**, l'orologio di motore: tempo di simulazione scalato, tempo reale, pausa e slow-motion senza fermare il loop di rendering.
 
 ## 📁 Struttura del Progetto Aggiornata
 
 ```text
-BeeEngine-V2.2/
+BeeEngine-V2.3/
 ├── index.html                  # Punto di ingresso HTML e configurazione Canvas
-├── main.js                     # Demo, gestione scene e punto d'avvio del gioco
+├── index.js                    # Barrel ESM (re-export di BeeEngine.js)
+├── main.js                     # Demo visiva (BeeTime: pausa / slow-motion)
 ├── BeeEngine.js                # Il CUORE del motore (Core Loop & System Coordinator)
 ├── README.md                   # Documentazione ufficiale e specifiche tecniche
 ├── package.json                # Manifest di configurazione per la pubblicazione NPM
@@ -17,35 +18,54 @@ BeeEngine-V2.2/
 ├── assets/                     # Gestione centralizzata e ordinata delle risorse
 │   ├── audio/                  # Effetti sonori (.mp3) e musiche di sottofondo
 │   └── images/                 # Texture dei personaggi (.png), sprite e sfondi
-└── src/                        # Tutti i moduli logici del motore
-    ├── BeeAssetManager.js      # Caricamento asincrono e cache di immagini/audio
-    ├── BeeBullet.js            # Gestione dei proiettili 2D attivi
-    ├── BeeButton.js            # Pulsanti interattivi per menu su Canvas
-    ├── BeeCamera.js            # Telecamera 2D con supporto al bounding box visivo
-    ├── BeeCollectible.js       # Oggetti raccoglibili (monete, miele)
-    ├── BeeCollisionSystem.js   # Gestore centralizzato e ottimizzato delle collisioni
-    ├── BeeEnemyShooter.js      # Nemico avanzato a 4 direzioni con sparo automatico
-    ├── BeeEntity.js            # Classe base per tutte le entità di gioco
-    ├── BeeGrid.js              # Griglia di sfondo / debug spaziale
-    ├── BeeInput.js             # Gestione input (tastiera, mouse, comandi)
-    ├── BeeJoystick.js          # NUOVO: Leva analogica virtuale integrata per mobile
-    ├── BeeMenuScene.js         # Scena nativa del menu principale
-    ├── BeeNemico.js            # Nemico base con movimento a pattuglia
-    ├── BeeParticleSystem.js    # Sistema di particelle per effetti grafici
-    ├── BeePlayer.js            # Personaggio giocabile (Modalità: 'platformer' o 'free')
-    ├── BeeRectCollider.js      # Collisore geometrico rettangolare AABB
-    ├── BeeSave.js              # Salvataggio dati persistenti in LocalStorage
-    ├── BeeSceneManager.js      # Gestore dei cicli di vita e transizioni delle scene
-    ├── BeeSprite.js            # Renderizzatore di fogli di sprite e texture
-    ├── BeeSpriteSheet.js       # NUOVO: Gestore e ritaglio avanzato degli sprite sheet
-    ├── BeeText.js              # Disegno di testi e rendering della barra HUD nativa
-    ├── BeeTilemap.js           # Mappe a blocchi ottimizzate con culling riga/colonna
-    ├── BeeTilemapLoader.js     # NUOVO: Caricatore asincrono per mappe di tessere
-    ├── BeeTimer.js             # Gestore eventi basati sul tempo (Cooldown)
-    ├── BeeVirtualDPad.js       # NUOVO: Pulsantiera direzionale virtuale a 4/8 vie
-    ├── BeeTouchButton.js       # NUOVO: Pulsante tattile programmabile con etichetta
-    └── BeeTouchControls.js     # NUOVO: Pulsanti tattili su schermo (Spara/Azione)
+└── src/
+    ├── core/                   # BeeTime, BeeEntity, BeeTimer, scene, asset, save, grid
+    ├── gameplay/               # Player, enemy, platform, collectible, menu
+    ├── graphics/               # Camera, sprite, tilemap, text, particles
+    ├── input/                  # Tastiera, mouse, joystick, touch, button
+    └── physics/                # Collisioni, collider, bullet
 ```
+
+## ⏱ BeeTime (v2.3.0) — orologio di motore
+
+`BeeTime` è l'orologio unico del core loop. Ogni frame fa **un** `tick(timestamp)`; da lì nascono due delta:
+
+| Asse | Campo | Si ferma in pausa? | Segue `timeScale`? | Uso |
+| --- | --- | --- | --- | --- |
+| Simulazione | `dt` / `elapsed` | sì (`dt = 0`) | sì | fisica, AI, sprite di gameplay, `BeeTimer` di default |
+| Reale | `unscaledDt` / `unscaledElapsed` | no | no | HUD, UI, mixer audio, timer di interfaccia |
+
+### Integrazione
+
+Il loop di `BeeEngine` chiama sempre `time.tick`, **renderizza sempre** (anche in pausa) e avanza scene/entità solo se il mondo non è in pausa.
+
+```javascript
+import { BeeEngine, BeeTimer } from 'beeengine';
+
+const gioco = new BeeEngine('testCanvas', 800, 600);
+gioco.start();
+
+gioco.pause();              // mondo fermo, HUD vivo
+gioco.resume();
+gioco.setTimeScale(0.25);   // slow-motion
+gioco.time.togglePause();
+
+// Timer immune a pausa/slow-mo (barra UI, fade)
+const hudTick = new BeeTimer(1, () => {}, true, { useUnscaledTime: true });
+hudTick.start();
+hudTick.update(gioco.time);
+```
+
+### API essenziale
+
+* `gioco.time.dt` — delta di simulazione (già clampato a `maxDelta`, default 50 ms).
+* `gioco.time.unscaledDt` — delta reale dello stesso frame.
+* `gioco.time.timeScale` — 0.25 / 1 / 2…
+* `gioco.time.fps` — stima su finestra 0.5 s di tempo reale.
+* `gioco.time.consumeFixedSteps(fn)` — accumulatore 1/60 pronto per un futuro solver fisico (il loop attuale resta a dt variabile).
+* `BeeTimer(..., { useUnscaledTime: true })` — cooldown sul tempo reale.
+
+Demo visiva: apri `index.html` (via `main.js`). Il quadrato rosso usa `dt`; la lancetta ciano usa `unscaledElapsed`. **P** pausa, **1/2/3** per 0.25x / 1x / 2x.
 
 ## 🚀 Novità e ottimizzazioni professionali nella v2.2.0
 

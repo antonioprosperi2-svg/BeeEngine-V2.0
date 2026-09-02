@@ -14,8 +14,9 @@ export class BeeMenuScene {
         console.log("🐝 BeeEngine: Avvio della partita!");
     }
 
-    update(dt, input) {
+    update(dt, input, engine) {
         if (!input) return;
+        // Menu: input resta vivo anche se il mondo è in pausa (dt = 0).
         // Quando premi ENTER, SPAZIO o Tocchi lo schermo, passa alla scena di gioco 'game'
         if (input.wasPressed("Enter") || input.wasPressed("Space") || input.mouse.wasPressed) {
             if (this.engine && this.engine.scenes) {

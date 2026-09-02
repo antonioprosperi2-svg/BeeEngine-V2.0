@@ -17,6 +17,9 @@ export class BeeAnimatedSprite {
         }
     }
 
+    /**
+     * @param {number} dt tempo di simulazione (scalato). In pausa è 0: il clip si ferma.
+     */
     update(dt) {
         const anim = this.animations[this.currentAnimName];
         if (!anim || !anim.frames || anim.frames.length === 0) return;
