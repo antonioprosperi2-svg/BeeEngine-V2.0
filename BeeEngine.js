@@ -8,6 +8,7 @@ import { BeeSceneManager } from './src/core/BeeSceneManager.js';
 import { BeeSave } from './src/core/BeeSave.js';
 import { BeeTimer } from './src/core/BeeTimer.js';
 import { BeeGrid } from './src/core/BeeGrid.js';
+import { BeeLadybug, BEE_LADYBUG_DEFAULTS } from './src/debug/BeeLadybug.js';
 
 // ==========================================
 // 2. INPUT & TOUCH CONTROLS (src/input/)
@@ -68,6 +69,8 @@ export class BeeEngine {
         this.entities = [];
         this.collisions = new BeeCollisionSystem(this);
         this.time = new BeeTime();
+        this.debug = new BeeLadybug(this);
+        this.debug.attach();
         this.camera = null;
         this.grid = null;
         this.currentScene = null;
@@ -185,6 +188,11 @@ export class BeeEngine {
         return this;
     }
 
+    enableLadybug(options = {}) {
+        this.debug.configure(options).attach().show();
+        return this.debug;
+    }
+
     stop() {
         this.isRunning = false;
         this.time.pause();
@@ -206,6 +214,10 @@ export class BeeEngine {
 
         if (this._resizeHandler) {
             window.removeEventListener('resize', this._resizeHandler);
+        }
+
+        if (this.debug && typeof this.debug.destroy === 'function') {
+            this.debug.destroy();
         }
     }
 
@@ -264,10 +276,19 @@ export class BeeEngine {
             this.render(this.ctx);
         }
 
+        if (this.debug && this.debug.enabled) {
+            this.debug.drawWorld(this.ctx);
+        }
+
         this.ctx.restore();
 
         if (this.touchControls) {
             this.touchControls.draw(this.ctx);
+        }
+
+        if (this.debug) {
+            this.debug.drawOverlay(this.ctx);
+            this.debug.poll();
         }
 
         this.input.endFrame();
@@ -419,7 +440,9 @@ export class BeeEngine {
 export {
     BEE_ENTITY_DEFAULTS,
     BEE_TIME_DEFAULTS,
+    BEE_LADYBUG_DEFAULTS,
     BeeTime,
+    BeeLadybug,
     BeeSceneManager,
     BeeSave,
     BeeParticleSystem,
