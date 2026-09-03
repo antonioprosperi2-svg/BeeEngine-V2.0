@@ -1,15 +1,15 @@
-# 🐝 Motore di gioco 2D BeeEngine (v2.3.0 Professional)
+# 🐝 Motore di gioco 2D BeeEngine (v2.4.0 Professional)
 
 BeeEngine è un motore di gioco 2D leggero, modulare e altamente ottimizzato scritto in puro JavaScript moderno (ES Modules) per HTML5 Canvas.
-La versione 2.3 introduce **BeeTime**, l'orologio di motore: tempo di simulazione scalato, tempo reale, pausa e slow-motion senza fermare il loop di rendering.
+La versione 2.4 introduce **BeeLadybug**, il debug visivo di marca: hitbox AABB, overlay FPS/entità/ciclo e ispezione in slow-motion o freeze, senza toccare F12.
 
 ## 📁 Struttura del Progetto Aggiornata
 
 ```text
-BeeEngine-V2.3/
+BeeEngine-V2.4/
 ├── index.html                  # Punto di ingresso HTML e configurazione Canvas
 ├── index.js                    # Barrel ESM (re-export di BeeEngine.js)
-├── main.js                     # Demo visiva (BeeTime: pausa / slow-motion)
+├── main.js                     # Demo visiva (BeeLadybug: hitbox + overlay)
 ├── BeeEngine.js                # Il CUORE del motore (Core Loop & System Coordinator)
 ├── README.md                   # Documentazione ufficiale e specifiche tecniche
 ├── package.json                # Manifest di configurazione per la pubblicazione NPM
@@ -23,7 +23,8 @@ BeeEngine-V2.3/
     ├── gameplay/               # Player, enemy, platform, collectible, menu
     ├── graphics/               # Camera, sprite, tilemap, text, particles
     ├── input/                  # Tastiera, mouse, joystick, touch, button
-    └── physics/                # Collisioni, collider, bullet
+    ├── physics/                # Collisioni, collider, bullet
+    └── debug/                  # BeeLadybug: overlay e hitbox
 ```
 
 ## ⏱ BeeTime (v2.3.0) — orologio di motore
@@ -65,7 +66,40 @@ hudTick.update(gioco.time);
 * `gioco.time.consumeFixedSteps(fn)` — accumulatore 1/60 pronto per un futuro solver fisico (il loop attuale resta a dt variabile).
 * `BeeTimer(..., { useUnscaledTime: true })` — cooldown sul tempo reale.
 
-Demo visiva: apri `index.html` (via `main.js`). Il quadrato rosso usa `dt`; la lancetta ciano usa `unscaledElapsed`. **P** pausa, **1/2/3** per 0.25x / 1x / 2x.
+Demo visiva: apri `index.html` (via `main.js`). **F2** apre BeeLadybug.
+
+## 🐞 BeeLadybug (v2.4.0) — debug visivo e monitoraggio
+
+`BeeLadybug` è l'occhio del motore: non è una classe di gameplay. Vive in `src/debug/` e disegna **dopo** il mondo (hitbox in spazio camera, overlay in spazio schermo).
+
+### Perché F2
+
+* **F12** è DevTools del browser: non lo tocchiamo.
+* La **tilde** sui layout italiani non è un tasto unico.
+* **F2** è libero, ed è lo standard dei pannelli debug nei motori.
+
+### Cosa mostra
+
+* Hitbox AABB di ogni entità (scene + `engine.entities` + figli + gruppi di collisione).
+* **Verde** = attiva, **rosso** = in overlap con un'altra AABB, **grigio** = inattiva.
+* Overlay: FPS (`BeeTime.fps`), entità attive / in memoria, durata ciclo (`unscaledDt` in ms), `timeScale`, stato RUN/FREEZE.
+
+### Controlli
+
+| Tasto | Azione |
+| --- | --- |
+| F2 | mostra / nasconde la coccinella |
+| F3 | alterna slow-motion `0.25x` e `1x` |
+| F4 | freeze / unfreeze della simulazione (`BeeTime.pause`) |
+
+I tre pulsanti sull'overlay fanno la stessa cosa. Il freeze ferma `dt` ma il loop continua a disegnare: puoi ispezionare le hitbox da fermo.
+
+```javascript
+const gioco = new BeeEngine('testCanvas', 800, 600);
+gioco.enableLadybug();          // visibile; F2 la nasconde
+// oppure: gioco.debug.toggle();
+gioco.start();
+```
 
 ## 🚀 Novità e ottimizzazioni professionali nella v2.2.0
 

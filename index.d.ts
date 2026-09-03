@@ -808,6 +808,60 @@ export declare class BeeTouchButton {
 // BeeEngine (Core)
 // ---------------------------------------------------------------------------
 
+export interface BeeLadybugOptions {
+  toggleKey?: string;
+  slowKey?: string;
+  freezeKey?: string;
+  slowScale?: number;
+  colorActive?: string;
+  colorColliding?: string;
+  colorInactive?: string;
+  overlayX?: number;
+  overlayY?: number;
+}
+
+export declare const BEE_LADYBUG_DEFAULTS: Readonly<{
+  toggleKey: string;
+  slowKey: string;
+  freezeKey: string;
+  slowScale: number;
+  colorActive: string;
+  colorColliding: string;
+  colorInactive: string;
+  overlayX: number;
+  overlayY: number;
+}>;
+
+export declare class BeeLadybug {
+  engine: BeeEngine;
+  enabled: boolean;
+  toggleKey: string;
+  slowKey: string;
+  freezeKey: string;
+  slowScale: number;
+  colorActive: string;
+  colorColliding: string;
+  colorInactive: string;
+  overlayX: number;
+  overlayY: number;
+
+  constructor(engine: BeeEngine, options?: BeeLadybugOptions);
+
+  configure(options?: BeeLadybugOptions): this;
+  attach(): this;
+  detach(): this;
+  destroy(): void;
+  show(): this;
+  hide(): this;
+  toggle(): this;
+  applySlowMo(): this;
+  toggleFreeze(): this;
+  restoreRealtime(): this;
+  drawWorld(ctx: CanvasRenderingContext2D): void;
+  drawOverlay(ctx: CanvasRenderingContext2D): void;
+  poll(): void;
+}
+
 export declare class BeeEngine {
   canvas: HTMLCanvasElement;
   ctx: CanvasRenderingContext2D;
@@ -817,6 +871,7 @@ export declare class BeeEngine {
   entities: BeeEntity[];
   collisions: BeeCollisionSystem;
   time: BeeTime;
+  debug: BeeLadybug;
   lastTime: number;
   camera: BeeCamera | null;
   grid: BeeGrid | null;
@@ -848,6 +903,7 @@ export declare class BeeEngine {
 
   enableJoystick(options?: object): BeeJoystick;
   enableTouchControls(): BeeTouchControls;
+  enableLadybug(options?: BeeLadybugOptions): BeeLadybug;
 
   createSpriteSheet(
     image: HTMLImageElement,
