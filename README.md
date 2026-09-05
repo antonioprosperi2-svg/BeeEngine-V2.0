@@ -1,3 +1,5 @@
+<img width="512" height="512" alt="Gemini_Generated_Image_pz9goopz9goopz9g (1)" src="https://github.com/user-attachments/assets/aa198589-b2c8-4355-be9a-7ef31a40c5e3" />
+
 # 🐝 Motore di gioco 2D BeeEngine (v2.4.0 Professional)
 
 BeeEngine è un motore di gioco 2D leggero, modulare e altamente ottimizzato scritto in puro JavaScript moderno (ES Modules) per HTML5 Canvas.
