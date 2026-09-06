@@ -101,6 +101,7 @@ export interface BeeEntityPhysics {
   landingTolerance?: number;
   velocityLookahead?: number;
   maxFallSpeed?: number;
+  angularVelocity?: number;
 }
 
 export declare const BEE_ENTITY_DEFAULTS: Readonly<{
@@ -112,11 +113,83 @@ export declare const BEE_ENTITY_DEFAULTS: Readonly<{
   landingTolerance: number;
   velocityLookahead: number;
   maxFallSpeed: number;
+  angularVelocity: number;
 }>;
 
-export declare class BeeEntity {
+export interface BeeTransformOptions {
+  x?: number;
+  y?: number;
+  rotation?: number;
+  scaleX?: number;
+  scaleY?: number;
+  pivotX?: number;
+  pivotY?: number;
+  zIndex?: number;
+}
+
+export declare const BEE_TRANSFORM_DEFAULTS: Readonly<{
   x: number;
   y: number;
+  rotation: number;
+  scaleX: number;
+  scaleY: number;
+  pivotX: number;
+  pivotY: number;
+  zIndex: number;
+}>;
+
+export interface BeeAffineMatrix {
+  a: number;
+  b: number;
+  c: number;
+  d: number;
+  tx: number;
+  ty: number;
+}
+
+export declare class BeeTransform {
+  zIndex: number;
+  onDirty: (() => void) | null;
+  x: number;
+  y: number;
+  rotation: number;
+  rotationDegrees: number;
+  scaleX: number;
+  scaleY: number;
+  pivotX: number;
+  pivotY: number;
+  readonly parent: BeeTransform | null;
+  readonly children: BeeTransform[];
+  readonly localMatrix: BeeAffineMatrix;
+  readonly worldMatrix: BeeAffineMatrix;
+  worldX: number;
+  worldY: number;
+  readonly worldRotation: number;
+  readonly worldScaleX: number;
+  readonly worldScaleY: number;
+
+  constructor(options?: BeeTransformOptions);
+
+  setScale(x: number, y?: number): this;
+  setPivot(x: number, y: number): this;
+  setPivotNormalized(nx: number, ny: number, width: number, height: number): this;
+  setParent(transform: BeeTransform | null): this;
+  markDirty(): void;
+  setWorldOrigin(worldX: number, worldY: number): this;
+  transformPoint(localX: number, localY: number, out?: { x: number; y: number }): { x: number; y: number };
+  inverseTransformPoint(worldX: number, worldY: number, out?: { x: number; y: number }): { x: number; y: number };
+  getWorldAABB(width: number, height: number, out?: BeeRect): BeeRect;
+  applyWorldTo(ctx: CanvasRenderingContext2D): this;
+  lookAt(worldX: number, worldY: number): this;
+}
+
+export declare class BeeEntity {
+  transform: BeeTransform;
+  x: number;
+  y: number;
+  rotation: number;
+  scaleX: number;
+  scaleY: number;
   worldX: number;
   worldY: number;
   readonly parent: BeeEntity | null;
@@ -124,6 +197,7 @@ export declare class BeeEntity {
   height: number;
   vx: number;
   vy: number;
+  angularVelocity: number;
   gravity: number;
   friction: number;
   airFriction: number;
@@ -149,6 +223,7 @@ export declare class BeeEntity {
   static worldYOf(node: { worldY?: number; y?: number } | null | undefined): number;
 
   getWorldAABB(): BeeRect;
+  applyWorldTransform(ctx: CanvasRenderingContext2D): this;
 
   addRectCollider(
     offsetX?: number,

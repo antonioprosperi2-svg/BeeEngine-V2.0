@@ -1,4 +1,5 @@
 import { BeeRectCollider } from '../physics/BeeRectCollider.js';
+import { BeeTransform, BEE_TRANSFORM_DEFAULTS } from './BeeTransform.js';
 
 /**
  * Parametri cinematici di default. Niente magic number sparsi nel solver:
@@ -12,8 +13,11 @@ export const BEE_ENTITY_DEFAULTS = Object.freeze({
     airFriction: 0,
     landingTolerance: 10,
     velocityLookahead: 0.1,
-    maxFallSpeed: Infinity
+    maxFallSpeed: Infinity,
+    angularVelocity: 0
 });
+
+export { BEE_TRANSFORM_DEFAULTS };
 
 function readWorldX(node) {
     if (!node) return 0;
@@ -27,14 +31,8 @@ function readWorldY(node) {
 
 /**
  * BeeEntity — nodo di scene graph.
- *
- * Responsabilità unica: dati di trasformata, gerarchia, ciclo di vita e
- * cinematica (velocità → posizione locale). Non disegna. Il rendering sta
- * sulle sottoclassi e la traversata sul motore. Le collisioni leggono l'AABB
- * mondo; il solver scrive di nuovo in coordinate locali.
- *
- * `x` / `y` sono SEMPRE locali al parent. `worldX` / `worldY` sono cache
- * lazy: si ricalcolano solo alla lettura, dopo che la catena è dirty.
+ * La geometria vive in `this.transform` (BeeTransform). Qui restano
+ * gerarchia, ciclo di vita e cinematica.
  */
 export class BeeEntity {
     static worldXOf(node) {
@@ -61,13 +59,15 @@ export class BeeEntity {
     ) {
         const cfg = physics ? { ...BEE_ENTITY_DEFAULTS, ...physics } : BEE_ENTITY_DEFAULTS;
 
-        this.#localX = x;
-        this.#localY = y;
+        this.transform = new BeeTransform({ x, y });
+        this.transform.onDirty = () => this.#cascadeDirty();
+
         this.width = width;
         this.height = height;
 
         this.vx = 0;
         this.vy = 0;
+        this.angularVelocity = cfg.angularVelocity;
         this.gravity = cfg.gravity;
         this.friction = cfg.friction;
         this.airFriction = cfg.airFriction;
@@ -82,34 +82,47 @@ export class BeeEntity {
         this.collider = null;
     }
 
-    #localX = 0;
-    #localY = 0;
     #parent = null;
     #children = [];
-    #worldDirty = true;
-    #worldX = 0;
-    #worldY = 0;
 
     get x() {
-        return this.#localX;
+        return this.transform.x;
     }
 
     set x(value) {
-        const next = Number(value) || 0;
-        if (next === this.#localX) return;
-        this.#localX = next;
-        this.#invalidateWorld();
+        this.transform.x = value;
     }
 
     get y() {
-        return this.#localY;
+        return this.transform.y;
     }
 
     set y(value) {
-        const next = Number(value) || 0;
-        if (next === this.#localY) return;
-        this.#localY = next;
-        this.#invalidateWorld();
+        this.transform.y = value;
+    }
+
+    get rotation() {
+        return this.transform.rotation;
+    }
+
+    set rotation(value) {
+        this.transform.rotation = value;
+    }
+
+    get scaleX() {
+        return this.transform.scaleX;
+    }
+
+    set scaleX(value) {
+        this.transform.scaleX = value;
+    }
+
+    get scaleY() {
+        return this.transform.scaleY;
+    }
+
+    set scaleY(value) {
+        this.transform.scaleY = value;
     }
 
     get parent() {
@@ -121,57 +134,40 @@ export class BeeEntity {
     }
 
     get worldX() {
-        this.#syncWorld();
-        return this.#worldX;
+        return this.transform.worldX;
     }
 
     set worldX(value) {
-        const parent = this.#parent;
-        this.x = parent ? value - parent.worldX : value;
+        this.transform.worldX = value;
     }
 
     get worldY() {
-        this.#syncWorld();
-        return this.#worldY;
+        return this.transform.worldY;
     }
 
     set worldY(value) {
-        const parent = this.#parent;
-        this.y = parent ? value - parent.worldY : value;
+        this.transform.worldY = value;
     }
 
     getWorldAABB() {
-        return {
-            x: this.worldX,
-            y: this.worldY,
-            width: this.width,
-            height: this.height
-        };
+        return this.transform.getWorldAABB(this.width, this.height, {
+            x: 0,
+            y: 0,
+            width: 0,
+            height: 0
+        });
     }
 
-    #invalidateWorld() {
-        if (this.#worldDirty) return;
-        this.#worldDirty = true;
+    applyWorldTransform(ctx) {
+        this.transform.applyWorldTo(ctx);
+        return this;
+    }
+
+    #cascadeDirty() {
         const kids = this.#children;
         for (let i = 0; i < kids.length; i++) {
-            kids[i].#invalidateWorld();
+            kids[i].transform.markDirty();
         }
-    }
-
-    #syncWorld() {
-        if (!this.#worldDirty) return;
-
-        const parent = this.#parent;
-        if (parent) {
-            parent.#syncWorld();
-            this.#worldX = parent.#worldX + this.#localX;
-            this.#worldY = parent.#worldY + this.#localY;
-        } else {
-            this.#worldX = this.#localX;
-            this.#worldY = this.#localY;
-        }
-
-        this.#worldDirty = false;
     }
 
     #hasAncestor(node) {
@@ -194,10 +190,6 @@ export class BeeEntity {
         return this.collider;
     }
 
-    /**
-     * Aggancia `entity` come figlio. Le sue x/y restano locali a questo nodo.
-     * Se aveva già un parent, viene staccata prima (niente doppi riferimenti).
-     */
     addChild(entity) {
         if (!entity || entity === this || entity.destroyed) return entity;
         if (this.#hasAncestor(entity)) return entity;
@@ -209,7 +201,7 @@ export class BeeEntity {
 
         this.#children.push(entity);
         entity.#parent = this;
-        entity.#invalidateWorld();
+        entity.transform.setParent(this.transform);
         return entity;
     }
 
@@ -221,13 +213,10 @@ export class BeeEntity {
         this.#children.splice(index, 1);
         if (entity.#parent === this) {
             entity.#parent = null;
-            entity.#invalidateWorld();
+            entity.transform.setParent(null);
         }
     }
 
-    /**
-     * Stacca dal parent senza distruggere. Rompe il ciclo parent↔child.
-     */
     detach() {
         if (this.#parent) {
             this.#parent.removeChild(this);
@@ -238,40 +227,43 @@ export class BeeEntity {
     collidesWith(other) {
         if (!other || other === this) return false;
 
-        const ax = this.worldX;
-        const ay = this.worldY;
-        const bx = readWorldX(other);
-        const by = readWorldY(other);
+        const a = this.getWorldAABB();
+        const b = typeof other.getWorldAABB === 'function'
+            ? other.getWorldAABB()
+            : {
+                x: readWorldX(other),
+                y: readWorldY(other),
+                width: other.width,
+                height: other.height
+            };
 
         return (
-            ax < bx + other.width &&
-            ax + this.width > bx &&
-            ay < by + other.height &&
-            ay + this.height > by
+            a.x < b.x + b.width &&
+            a.x + a.width > b.x &&
+            a.y < b.y + b.height &&
+            a.y + a.height > b.y
         );
     }
 
-    /**
-     * Risolve un contatto solido in spazio mondo, poi riscrive la posizione
-     * locale. Tolleranza di atterraggio e lookahead sulla vy sono configurabili.
-     */
     resolvePlatformCollision(platform) {
         if (!this.collidesWith(platform)) return false;
 
-        const x = this.worldX;
-        const y = this.worldY;
-        const px = readWorldX(platform);
-        const py = readWorldY(platform);
-        const pw = platform.width;
-        const ph = platform.height;
+        const box = this.getWorldAABB();
+        const plat = typeof platform.getWorldAABB === 'function'
+            ? platform.getWorldAABB()
+            : null;
+        const px = plat ? plat.x : readWorldX(platform);
+        const py = plat ? plat.y : readWorldY(platform);
+        const pw = plat ? plat.width : platform.width;
+        const ph = plat ? plat.height : platform.height;
 
-        const overlapX = Math.min(x + this.width - px, px + pw - x);
-        const overlapY = Math.min(y + this.height - py, py + ph - y);
+        const overlapX = Math.min(box.x + box.width - px, px + pw - box.x);
+        const overlapY = Math.min(box.y + box.height - py, py + ph - box.y);
 
         if (overlapY < overlapX) {
             const lookahead = this.vy * this.velocityLookahead;
             const landingBand = py + this.landingTolerance;
-            if (this.vy >= 0 && y + this.height - lookahead <= landingBand) {
+            if (this.vy >= 0 && box.y + box.height - lookahead <= landingBand) {
                 this.worldY = py - this.height;
                 this.vy = 0;
                 this.isGrounded = true;
@@ -290,10 +282,6 @@ export class BeeEntity {
         return false;
     }
 
-    /**
-     * Integra la cinematica sulla posizione LOCALE. Non risolve collisioni
-     * e non tocca il canvas: è un aggiornamento di dati.
-     */
     integrate(dt) {
         if (!this.active || this.destroyed || dt <= 0) return;
 
@@ -309,19 +297,13 @@ export class BeeEntity {
             this.vx *= Math.max(0, 1 - drag * dt);
         }
 
-        if (this.vx !== 0 || this.vy !== 0) {
-            this.#localX += this.vx * dt;
-            this.#localY += this.vy * dt;
-            this.#invalidateWorld();
-        }
+        if (this.vx !== 0) this.transform.x += this.vx * dt;
+        if (this.vy !== 0) this.transform.y += this.vy * dt;
+        if (this.angularVelocity !== 0) this.transform.rotation += this.angularVelocity * dt;
 
         this.isGrounded = false;
     }
 
-    /**
-     * Tick del grafo: cinematica di questo nodo, poi i figli attivi.
-     * I figli destroyed vengono scollegati qui, senza allocare un nuovo array.
-     */
     update(dt, input, engine) {
         if (this.destroyed || !this.active) return;
 
@@ -345,10 +327,6 @@ export class BeeEntity {
         }
     }
 
-    /**
-     * Hook vuoto: BeeEntity non renderizza. Le sottoclassi disegnano in
-     * worldX/worldY. BeeEngine attraversa i children.
-     */
     draw(_ctx, _engine) {
         // intenzionalmente vuoto — single responsibility
     }
@@ -367,8 +345,11 @@ export class BeeEntity {
         for (let i = 0; i < kids.length; i++) {
             const child = kids[i];
             child.#parent = null;
+            child.transform.setParent(null);
             child.destroy();
         }
+
+        this.transform.onDirty = null;
 
         if (this.collider && this.collider.entity === this) {
             this.collider.entity = null;

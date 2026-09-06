@@ -1,62 +1,58 @@
-import { BeeEngine, BeeEntity, BeePlatform } from './BeeEngine.js';
+import { BeeEngine, BeeEntity } from './BeeEngine.js';
 
 const gioco = new BeeEngine('testCanvas', 800, 600);
 gioco.enableAutoResize(800, 600, 100);
 window.gioco = gioco;
 
-class PatrolBox extends BeeEntity {
-    constructor(x, y, width, height, color, vx, minX, maxX) {
+class TransformBody extends BeeEntity {
+    constructor(x, y, width, height, color, angularVelocity = 0) {
         super(x, y, width, height);
         this.color = color;
-        this.vx = vx;
-        this.minX = minX;
-        this.maxX = maxX;
+        this.angularVelocity = angularVelocity;
+        this.transform.setPivot(width / 2, height / 2);
         this.addRectCollider();
     }
 
-    update(dt, input, engine) {
-        super.update(dt, input, engine);
-        if (this.worldX <= this.minX || this.worldX + this.width >= this.maxX) {
-            this.vx *= -1;
-            this.worldX = Math.max(this.minX, Math.min(this.maxX - this.width, this.worldX));
-        }
-    }
-
     draw(ctx) {
+        ctx.save();
+        this.applyWorldTransform(ctx);
         ctx.fillStyle = this.color;
-        ctx.fillRect(this.worldX, this.worldY, this.width, this.height);
+        ctx.fillRect(0, 0, this.width, this.height);
         ctx.strokeStyle = '#111';
         ctx.lineWidth = 2;
-        ctx.strokeRect(this.worldX, this.worldY, this.width, this.height);
+        ctx.strokeRect(0, 0, this.width, this.height);
+        ctx.fillStyle = '#ffe08a';
+        ctx.fillRect(this.width / 2 - 3, this.height / 2 - 3, 6, 6);
+        ctx.restore();
     }
 }
 
-const ground = new BeePlatform(60, 430, 680, 28, '#c9a227');
-ground.addRectCollider();
+const sun = new TransformBody(400, 300, 72, 72, '#f0a202', 0.7);
+const planet = new TransformBody(36 + 140, 36, 40, 40, '#4a90e2', -1.4);
+const moon = new TransformBody(20 + 52, 20, 18, 18, '#d8d8d8', 2.5);
 
-const walker = new PatrolBox(90, 382, 48, 48, '#4a90e2', 160, 70, 730);
-const hunter = new PatrolBox(560, 390, 40, 40, '#e24a4a', -120, 70, 730);
-const hover = new PatrolBox(200, 250, 36, 36, '#7c5cff', 90, 80, 720);
+sun.addChild(planet);
+planet.addChild(moon);
 
-const ladybugScene = {
-    entities: [ground, walker, hunter, hover],
+const scene = {
+    entities: [sun],
 
     draw(ctx) {
-        ctx.fillStyle = '#14161f';
+        ctx.fillStyle = '#0d1020';
         ctx.fillRect(0, 0, 800, 600);
 
         ctx.fillStyle = '#ffe08a';
         ctx.font = 'bold 20px monospace';
-        ctx.fillText('BeeLadybug — debug visivo del motore', 24, 520);
+        ctx.fillText('BeeTransform — scena grafo, non parent.x + x', 24, 500);
         ctx.font = '14px monospace';
         ctx.fillStyle = '#c8c8c8';
-        ctx.fillText('F2 apre la coccinella. Verde = attiva, rosso = in collisione.', 24, 546);
-        ctx.fillText('F3 slow-motion   F4 freeze del frame   click sui tasti dell\'overlay', 24, 568);
+        ctx.fillText('Il sole ruota. Il pianeta è locale (140,0). La luna è locale al pianeta.', 24, 526);
+        ctx.fillText('F2 Ladybug: l\'OBB ruota col parent. F4 freeze per ispezionare.', 24, 548);
     }
 };
 
-gioco.scenes.add('ladybug', ladybugScene);
-gioco.scenes.change('ladybug');
+gioco.scenes.add('transform', scene);
+gioco.scenes.change('transform');
 gioco.enableLadybug();
 gioco.start();
 

@@ -251,7 +251,25 @@ export class BeeLadybug {
             ctx.strokeStyle = color;
             ctx.fillStyle = colliding ? 'rgba(255, 59, 59, 0.16)' : 'rgba(61, 255, 106, 0.08)';
             ctx.fillRect(box.x, box.y, box.width, box.height);
-            ctx.strokeRect(box.x + 0.5, box.y + 0.5, box.width, box.height);
+
+            const xf = entity.transform;
+            if (xf && typeof xf.transformPoint === 'function') {
+                const w = entity.width || box.width;
+                const h = entity.height || box.height;
+                const p0 = xf.transformPoint(0, 0, { x: 0, y: 0 });
+                const p1 = xf.transformPoint(w, 0, { x: 0, y: 0 });
+                const p2 = xf.transformPoint(w, h, { x: 0, y: 0 });
+                const p3 = xf.transformPoint(0, h, { x: 0, y: 0 });
+                ctx.beginPath();
+                ctx.moveTo(p0.x, p0.y);
+                ctx.lineTo(p1.x, p1.y);
+                ctx.lineTo(p2.x, p2.y);
+                ctx.lineTo(p3.x, p3.y);
+                ctx.closePath();
+                ctx.stroke();
+            } else {
+                ctx.strokeRect(box.x + 0.5, box.y + 0.5, box.width, box.height);
+            }
         }
 
         ctx.restore();

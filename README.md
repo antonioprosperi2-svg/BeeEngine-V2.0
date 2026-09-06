@@ -1,16 +1,16 @@
 ![alt text](Gemini_Generated_Image_pz9goopz9goopz9g.jpg)
-# 🐝 Motore di gioco 2D BeeEngine (v2.4.0 Professional)
+# 🐝 Motore di gioco 2D BeeEngine (v2.5.0 Professional)
 
 BeeEngine è un motore di gioco 2D leggero, modulare e altamente ottimizzato scritto in puro JavaScript moderno (ES Modules) per HTML5 Canvas.
-La versione 2.4 introduce **BeeLadybug**, il debug visivo di marca: hitbox AABB, overlay FPS/entità/ciclo e ispezione in slow-motion o freeze, senza toccare F12.
+La versione 2.5 introduce **BeeTransform**: scena grafo affine (posizione, rotazione, scala, pivot), non un `world = parent.x + x`.
 
 ## 📁 Struttura del Progetto Aggiornata
 
 ```text
-BeeEngine-V2.4/
+BeeEngine-V2.5/
 ├── index.html                  # Punto di ingresso HTML e configurazione Canvas
 ├── index.js                    # Barrel ESM (re-export di BeeEngine.js)
-├── main.js                     # Demo visiva (BeeLadybug: hitbox + overlay)
+├── main.js                     # Demo visiva (BeeTransform: parent/figli in orbita)
 ├── BeeEngine.js                # Il CUORE del motore (Core Loop & System Coordinator)
 ├── README.md                   # Documentazione ufficiale e specifiche tecniche
 ├── package.json                # Manifest di configurazione per la pubblicazione NPM
@@ -20,7 +20,7 @@ BeeEngine-V2.4/
 │   ├── audio/                  # Effetti sonori (.mp3) e musiche di sottofondo
 │   └── images/                 # Texture dei personaggi (.png), sprite e sfondi
 └── src/
-    ├── core/                   # BeeTime, BeeEntity, BeeTimer, scene, asset, save, grid
+    ├── core/                   # BeeTransform, BeeTime, BeeEntity, BeeTimer, scene, asset, save, grid
     ├── gameplay/               # Player, enemy, platform, collectible, menu
     ├── graphics/               # Camera, sprite, tilemap, text, particles
     ├── input/                  # Tastiera, mouse, joystick, touch, button
@@ -69,6 +69,31 @@ hudTick.update(gioco.time);
 
 Demo visiva: apri `index.html` (via `main.js`). **F2** apre BeeLadybug.
 
+## 🧭 BeeTransform (v2.5.0) — scena grafo affine
+
+`BeeTransform` è la geometria. `BeeEntity` ne possiede una (`entity.transform`) e non ricalcola più il mondo come somma di offset.
+
+Matrice locale: `T(pos) · R · S · T(-pivot)`.  
+Matrice mondo: `parent.world · local`. Cache dirty-flag, zero allocazioni nel tick.
+
+| Locale | Mondo |
+| --- | --- |
+| `x`, `y`, `rotation`, `scaleX/Y`, `pivotX/Y` | `worldX/Y`, `worldRotation`, `worldScaleX/Y` |
+| `setPivot` / `setPivotNormalized` | `setWorldOrigin` (inverte la catena, non sottrae) |
+| `applyWorldTo(ctx)` | disegna in spazio locale |
+
+```javascript
+hub.transform.setPivot(36, 36);
+hub.angularVelocity = 0.8;
+hub.addChild(satellite);          // satellite.x/y restano locali
+ctx.save();
+entity.applyWorldTransform(ctx);
+ctx.fillRect(0, 0, entity.width, entity.height);
+ctx.restore();
+```
+
+`getWorldAABB()` è l'AABB dell'OBB ruotato: Ladybug disegna i quattro spigoli, il culling usa i bounds giusti.
+
 ## 🐞 BeeLadybug (v2.4.0) — debug visivo e monitoraggio
 
 `BeeLadybug` è l'occhio del motore: non è una classe di gameplay. Vive in `src/debug/` e disegna **dopo** il mondo (hitbox in spazio camera, overlay in spazio schermo).
@@ -81,7 +106,7 @@ Demo visiva: apri `index.html` (via `main.js`). **F2** apre BeeLadybug.
 
 ### Cosa mostra
 
-* Hitbox AABB di ogni entità (scene + `engine.entities` + figli + gruppi di collisione).
+* Hitbox AABB di ogni entità (scene + `engine.entities` + figli + gruppi di collisione). Se l'entità ha un `BeeTransform`, Ladybug traccia anche l'OBB (i quattro spigoli ruotati).
 * **Verde** = attiva, **rosso** = in overlap con un'altra AABB, **grigio** = inattiva.
 * Overlay: FPS (`BeeTime.fps`), entità attive / in memoria, durata ciclo (`unscaledDt` in ms), `timeScale`, stato RUN/FREEZE.
 

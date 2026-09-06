@@ -3,6 +3,7 @@
 // ==========================================
 import { BeeAssetManager } from './src/core/BeeAssetManager.js';
 import { BeeEntity, BEE_ENTITY_DEFAULTS } from './src/core/BeeEntity.js';
+import { BeeTransform, BEE_TRANSFORM_DEFAULTS } from './src/core/BeeTransform.js';
 import { BeeTime, BEE_TIME_DEFAULTS } from './src/core/BeeTime.js';
 import { BeeSceneManager } from './src/core/BeeSceneManager.js';
 import { BeeSave } from './src/core/BeeSave.js';
@@ -334,6 +335,9 @@ export class BeeEngine {
 
     getEntityDrawBounds(entity) {
         if (!entity) return null;
+        if (typeof entity.getWorldAABB === 'function') {
+            return entity.getWorldAABB();
+        }
         if (entity.collider) {
             return {
                 x: entity.collider.x,
@@ -439,9 +443,11 @@ export class BeeEngine {
 
 export {
     BEE_ENTITY_DEFAULTS,
+    BEE_TRANSFORM_DEFAULTS,
     BEE_TIME_DEFAULTS,
     BEE_LADYBUG_DEFAULTS,
     BeeTime,
+    BeeTransform,
     BeeLadybug,
     BeeSceneManager,
     BeeSave,
