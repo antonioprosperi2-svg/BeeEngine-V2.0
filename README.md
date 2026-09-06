@@ -202,4 +202,4 @@ gioco.start();
 
 ---
 
-BeeEngine è una libreria open source progettata per offrire un framework 2D fluido, leggero e modulare per lo sviluppo su HTML5 Canvas. 🐝
+![alt text](download.png)
