@@ -6,7 +6,7 @@ import { BeeEntity, BEE_ENTITY_DEFAULTS } from './src/core/BeeEntity.js';
 import { BeeTransform, BEE_TRANSFORM_DEFAULTS } from './src/core/BeeTransform.js';
 import { BeeTime, BEE_TIME_DEFAULTS } from './src/core/BeeTime.js';
 import { BeeSceneManager } from './src/core/BeeSceneManager.js';
-import { BeeSave } from './src/core/BeeSave.js';
+import { BeeSave, BeeSaveStore, BEE_SAVE_DEFAULTS, BEE_SAVE_STATUS } from './src/core/BeeSave.js';
 import { BeeTimer } from './src/core/BeeTimer.js';
 import { BeeGrid } from './src/core/BeeGrid.js';
 import { BeeLadybug, BEE_LADYBUG_DEFAULTS } from './src/debug/BeeLadybug.js';
@@ -70,6 +70,7 @@ export class BeeEngine {
         this.entities = [];
         this.collisions = new BeeCollisionSystem(this);
         this.time = new BeeTime();
+        this.save = new BeeSaveStore();
         this.debug = new BeeLadybug(this);
         this.debug.attach();
         this.camera = null;
@@ -445,12 +446,15 @@ export {
     BEE_ENTITY_DEFAULTS,
     BEE_TRANSFORM_DEFAULTS,
     BEE_TIME_DEFAULTS,
+    BEE_SAVE_DEFAULTS,
+    BEE_SAVE_STATUS,
     BEE_LADYBUG_DEFAULTS,
     BeeTime,
     BeeTransform,
     BeeLadybug,
     BeeSceneManager,
     BeeSave,
+    BeeSaveStore,
     BeeParticleSystem,
     BeeTilemap,
     BeeButton,

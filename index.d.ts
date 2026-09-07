@@ -743,14 +743,101 @@ export declare class BeeTime {
   consumeFixedSteps(callback: (fixedDt: number) => void): number;
 }
 
+export type BeeSaveStatus =
+  | "ok"
+  | "missing"
+  | "corrupt"
+  | "unavailable"
+  | "rejected"
+  | "quota";
+
+export interface BeeSaveOptions {
+  prefix?: string;
+  namespace?: string;
+  version?: number;
+  onCorrupt?: "keep" | "remove";
+  fallback?: "memory" | "none";
+  resaveOnMigrate?: boolean;
+  storage?: Storage | null;
+  migrate?: (data: unknown, from: number, to: number, key: string) => unknown;
+}
+
+export interface BeeSaveRecord<T = unknown> {
+  ok: boolean;
+  status: BeeSaveStatus;
+  key: string;
+  storageKey: string;
+  value: T | undefined;
+  version: number;
+  savedAt: number;
+  legacy: boolean;
+  message: string;
+}
+
+export declare const BEE_SAVE_DEFAULTS: Readonly<{
+  prefix: string;
+  namespace: string;
+  version: number;
+  onCorrupt: "keep" | "remove";
+  fallback: "memory" | "none";
+  resaveOnMigrate: boolean;
+}>;
+
+export declare const BEE_SAVE_STATUS: Readonly<{
+  OK: "ok";
+  MISSING: "missing";
+  CORRUPT: "corrupt";
+  UNAVAILABLE: "unavailable";
+  REJECTED: "rejected";
+  QUOTA: "quota";
+}>;
+
+export declare class BeeSaveStore {
+  prefix: string;
+  namespace: string;
+  version: number;
+  onCorrupt: "keep" | "remove";
+  fallback: "memory" | "none";
+  resaveOnMigrate: boolean;
+  migrate: ((data: unknown, from: number, to: number, key: string) => unknown) | null;
+  lastRead: BeeSaveRecord | null;
+  lastWrite: BeeSaveRecord | null;
+  readonly available: boolean;
+  readonly persistent: boolean;
+
+  constructor(options?: BeeSaveOptions);
+
+  configure(options?: BeeSaveOptions): this;
+  storageKey(key: string): string;
+  save<T>(key: string, value: T): BeeSaveRecord<T>;
+  read<T = unknown>(key: string): BeeSaveRecord<T>;
+  load<T = unknown>(key: string, defaultValue?: T | null): T | null;
+  remove(key: string): boolean;
+  exists(key: string): boolean;
+  has(key: string): boolean;
+  clearAll(): number;
+  slotKey(index: number): string;
+  saveSlot<T>(index: number, value: T): BeeSaveRecord<T>;
+  readSlot<T = unknown>(index: number): BeeSaveRecord<T>;
+  loadSlot<T = unknown>(index: number, defaultValue?: T | null): T | null;
+}
+
 export declare class BeeSave {
   static prefix: string;
+  static readonly store: BeeSaveStore;
 
-  static save(key: string, value: unknown): void;
+  static create(options?: BeeSaveOptions): BeeSaveStore;
+  static configure(options?: BeeSaveOptions): typeof BeeSave;
+  static save<T>(key: string, value: T): BeeSaveRecord<T>;
+  static read<T = unknown>(key: string): BeeSaveRecord<T>;
   static load<T = unknown>(key: string, defaultValue?: T | null): T | null;
-  static remove(key: string): void;
+  static remove(key: string): boolean;
   static exists(key: string): boolean;
-  static clearAll(): void;
+  static has(key: string): boolean;
+  static clearAll(): number;
+  static saveSlot<T>(index: number, value: T): BeeSaveRecord<T>;
+  static readSlot<T = unknown>(index: number): BeeSaveRecord<T>;
+  static loadSlot<T = unknown>(index: number, defaultValue?: T | null): T | null;
 }
 
 export declare class BeeMenuScene implements BeeScene {
@@ -946,6 +1033,7 @@ export declare class BeeEngine {
   entities: BeeEntity[];
   collisions: BeeCollisionSystem;
   time: BeeTime;
+  save: BeeSaveStore;
   debug: BeeLadybug;
   lastTime: number;
   camera: BeeCamera | null;

@@ -94,6 +94,35 @@ ctx.restore();
 
 `getWorldAABB()` è l'AABB dell'OBB ruotato: Ladybug disegna i quattro spigoli, il culling usa i bounds giusti.
 
+## 💾 BeeSave — persistenza DTO, non `setItem` nudo
+
+`BeeSave` non è più una facade cieca su `localStorage`. Ogni record è un envelope `{ __bee, v, t, d }`. `read()` distingue **missing / ok / corrupt / unavailable / rejected / quota**. Un JSON rotto non è un primo avvio.
+
+| Metodo | Significato |
+| --- | --- |
+| `read(key)` | record onesto: usa questo per i progressi |
+| `load(key, fallback)` | valore se `ok` (anche `null` salvato); missing → fallback |
+| `exists(key)` | record **valido**; un blob corrotto è `false` |
+| `has(key)` | chiave presente sul disco, anche se rotta |
+| `configure({ namespace, version, migrate })` | una volta all'avvio: isola i denti sullo stesso dominio |
+
+```javascript
+gioco.save.configure({ namespace: 'orbit', version: 2, migrate(data, from) {
+    if (from < 2) return { score: data.score ?? 0, lives: 3 };
+    return data;
+}});
+
+const slot = gioco.save.readSlot(0);
+if (slot.status === 'missing') { /* primo avvio */ }
+if (slot.status === 'corrupt') { /* ripara o wipe, non trattarlo come new game */ }
+if (slot.ok) { apply(slot.value); }
+
+gioco.save.save('settings', { muted: true });   // DTO piatto
+// BeeSave.save('p', player) → rejected: niente entità vive
+```
+
+Safari privato / storage assente: fallback in memoria di sessione (`fallback: 'memory'`). `save` non lancia. I record pre-envelope restano leggibili come `legacy`.
+
 ## 🐞 BeeLadybug (v2.4.0) — debug visivo e monitoraggio
 
 `BeeLadybug` è l'occhio del motore: non è una classe di gameplay. Vive in `src/debug/` e disegna **dopo** il mondo (hitbox in spazio camera, overlay in spazio schermo).
