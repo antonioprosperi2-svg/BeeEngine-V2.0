@@ -34,6 +34,8 @@ export interface BeeScene {
   entities?: BeeEntity[];
   engine?: BeeEngine;
   scene?: BeeScene;
+  /** Se true, `change`/`remove` non distruggono le entity. */
+  persistEntities?: boolean;
   enter?(data?: unknown): void;
   exit?(): void;
   onEnter?(data?: unknown): void;
@@ -308,13 +310,16 @@ export declare class BeeSceneManager {
 
   constructor(engine: BeeEngine);
 
-  add(name: string, scene: BeeScene): void;
-  change(name: string, data?: unknown): void;
-  addEntity(entity: BeeEntity): void;
+  add(name: string, scene: BeeScene): this;
+  has(name: string): boolean;
+  change(name: string, data?: unknown): this;
+  remove(name: string): this;
+  addEntity(entity: BeeEntity): BeeEntity | undefined;
   update(dt: number, input?: BeeInput): void;
   draw(ctx?: CanvasRenderingContext2D): void;
   getCurrentScene(): BeeScene | null;
   getCurrentSceneName(): string | null;
+  destroy(): this;
 }
 
 // ---------------------------------------------------------------------------
@@ -1247,7 +1252,7 @@ export declare class BeeEngine {
   emit(evento: string, dati?: unknown): void;
   off(evento: string, callback: BeeEventCallback): void;
 
-  addEntity(entity: BeeEntity): void;
+  addEntity(entity: BeeEntity): BeeEntity | undefined;
   updateEntities(dt: number, input: BeeInput): void;
   renderEntities(ctx: CanvasRenderingContext2D): void;
   getEntityDrawBounds(entity: BeeEntity): BeeRect | null;

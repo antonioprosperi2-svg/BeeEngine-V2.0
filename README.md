@@ -69,6 +69,22 @@ hudTick.update(gioco.time);
 
 Demo visiva: apri `index.html` (via `main.js`). **F2** apre BeeLadybug.
 
+## 🎬 BeeSceneManager — replace, non stack
+
+`change` sostituisce la scena. Stesso nome = restart (`onExit`/`exit` → sweep entity → `onEnter`/`enter`). Non è uno stack: niente push/pop/fade.
+
+Il manager è l’unico owner del loop entity. `scene.update` / `scene.draw` sono logica di scena e HUD, non un secondo `for` sulle entity (quello era un doppio tick).
+
+| API | Contratto |
+| --- | --- |
+| `add(name, scene)` | registra; `add(null)` lancia |
+| `change(name, data)` | replace + restart; `change` dentro `update` slitta le entity al frame dopo |
+| `remove(name)` | sweep + toglie dalla Map |
+| `persistEntities: true` | uscire non distrugge le entity |
+| `gioco.addEntity` | se c’è una scena corrente, va lì, non in `engine.entities` |
+
+`engine.destroy()` chiama `scenes.destroy()` (exit della corrente, sweep di tutte, Map vuota).
+
 ## 🧭 BeeTransform (v2.5.0) — scena grafo affine
 
 `BeeTransform` è la geometria. `BeeEntity` ne possiede una (`entity.transform`) e non ricalcola più il mondo come somma di offset.

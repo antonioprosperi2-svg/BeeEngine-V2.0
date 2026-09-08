@@ -148,8 +148,7 @@ export class BeeEngine {
     }
 
     setScene(name, data = null) {
-        this.physics.clear();
-        this.entities = [];
+        this.entities.length = 0;
         if (this.scenes) {
             this.scenes.change(name, data);
         }
@@ -216,7 +215,10 @@ export class BeeEngine {
 
     destroy() {
         this.stop();
-        this.entities = [];
+        if (this.scenes && typeof this.scenes.destroy === 'function') {
+            this.scenes.destroy();
+        }
+        this.entities.length = 0;
         this.events = {};
 
         if (this._startAudioHandler) {
@@ -325,7 +327,16 @@ export class BeeEngine {
         this.events[evento] = this.events[evento].filter(cb => cb !== callback);
     }
 
-    addEntity(entity) { this.entities.push(entity); }
+    addEntity(entity) {
+        if (!entity || entity.destroyed) return entity;
+        if (this.scenes && this.scenes.currentScene) {
+            return this.scenes.addEntity(entity);
+        }
+        if (this.entities.indexOf(entity) < 0) {
+            this.entities.push(entity);
+        }
+        return entity;
+    }
 
     updateEntities(dt, input) {
         let hasDestroyed = false;

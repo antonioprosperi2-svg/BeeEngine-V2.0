@@ -57,20 +57,13 @@ const mainScene = {
         });
     },
 
-    update(dt, input) {
-        for (const e of this.entities) {
-            if (e.update) e.update(dt, input, game);
-        }
+    update(_dt, _input) {
         game.collisions.run();
     },
 
     draw(ctx) {
         ctx.fillStyle = '#1a1a2e';
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-
-        for (const e of this.entities) {
-            if (e.draw) e.draw(ctx, game);
-        }
 
         BeeText.drawHUD(ctx, this.player?.score || 0, this.player?.lives || 3, 'BEE ENGINE 2D DEMO');
         ctx.fillStyle = '#ffd700';

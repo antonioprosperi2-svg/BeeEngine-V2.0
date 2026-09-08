@@ -1,94 +1,140 @@
+/**
+ * BeeSceneManager — registro di scene e una sola corrente.
+ * `change` è replace, non uno stack: stesso nome = restart (exit + sweep + enter).
+ * Il manager è l'unico owner del loop entity. scene.update/draw sono logica e HUD.
+ */
+
 export class BeeSceneManager {
     constructor(engine) {
+        if (!engine) {
+            throw new Error('BeeSceneManager: serve un engine');
+        }
         this.engine = engine;
         this.ctx = engine.ctx;
         this.scenes = new Map();
         this.currentScene = null;
         this.currentSceneName = null;
+        this.#inUpdate = false;
+        this.#changedDuringUpdate = false;
     }
+
+    #inUpdate;
+    #changedDuringUpdate;
 
     add(name, scene) {
-        if (!scene.entities) {
+        const id = this.#id(name, 'add');
+        if (!scene || typeof scene !== 'object') {
+            throw new Error('BeeSceneManager.add: scene must be an object');
+        }
+
+        if (!Array.isArray(scene.entities)) {
             scene.entities = [];
         }
-
         scene.engine = this.engine;
-
-        this.scenes.set(name, scene);
+        this.scenes.set(id, scene);
+        return this;
     }
 
+    has(name) {
+        return this.scenes.has(String(name ?? ''));
+    }
+
+    /**
+     * Sostituisce la scena corrente. Stesso nome = restart.
+     * Se chiamato da `scene.update`, le entity della nuova scena partono al frame dopo.
+     */
     change(name, data = null) {
-        if (!this.scenes.has(name)) {
-            throw new Error(`Scena non trovata: ${name}`);
+        const id = this.#id(name, 'change');
+        if (!this.scenes.has(id)) {
+            throw new Error(`BeeSceneManager: scena non trovata: ${id}`);
         }
 
-        if (this.currentScene) {
-            if (this.currentScene.onExit) {
-                this.currentScene.onExit();
-            } else if (this.currentScene.exit) {
-                this.currentScene.exit();
-            }
+        const next = this.scenes.get(id);
+        this.#leave(this.currentScene);
+
+        this.currentScene = next;
+        this.currentSceneName = id;
+        this.engine.currentScene = next;
+        this.#enter(next, data);
+
+        if (this.#inUpdate) {
+            this.#changedDuringUpdate = true;
+        }
+        return this;
+    }
+
+    remove(name) {
+        const id = this.#id(name, 'remove');
+        const scene = this.scenes.get(id);
+        if (!scene) return this;
+
+        if (this.currentScene === scene) {
+            this.#leave(scene);
+            this.currentScene = null;
+            this.currentSceneName = null;
+            this.engine.currentScene = null;
+        } else {
+            this.#sweep(scene);
         }
 
-        this.currentScene = this.scenes.get(name);
-        this.currentSceneName = name;
-
-        // Compatibilità con engine.currentScene, se nel motore lo usi ancora
-        this.engine.currentScene = this.currentScene;
-
-        this.currentScene.engine = this.engine;
-
-        if (!this.currentScene.entities) {
-            this.currentScene.entities = [];
-        }
-
-        if (this.currentScene.onEnter) {
-            this.currentScene.onEnter(data);
-        } else if (this.currentScene.enter) {
-            this.currentScene.enter(data);
-        }
+        this.scenes.delete(id);
+        return this;
     }
 
     addEntity(entity) {
-        if (!this.currentScene) return;
+        if (!entity || entity.destroyed) return entity;
+        if (!this.currentScene) return entity;
+
+        if (!Array.isArray(this.currentScene.entities)) {
+            this.currentScene.entities = [];
+        }
 
         entity.engine = this.engine;
         entity.scene = this.currentScene;
-
-        this.currentScene.entities.push(entity);
+        if (this.currentScene.entities.indexOf(entity) < 0) {
+            this.currentScene.entities.push(entity);
+        }
+        return entity;
     }
 
-    update(dt) {
+    update(dt, input) {
         if (!this.currentScene) return;
 
-        if (this.currentScene.update) {
-            this.currentScene.update(dt, this.engine.input, this.engine);
+        this.#inUpdate = true;
+        this.#changedDuringUpdate = false;
+
+        const scene = this.currentScene;
+        if (typeof scene.update === 'function') {
+            scene.update(dt, input ?? this.engine.input, this.engine);
+        }
+
+        this.#inUpdate = false;
+
+        if (this.#changedDuringUpdate) {
+            this.#changedDuringUpdate = false;
+            return;
         }
 
         if (dt <= 0) return;
-
-        for (const entity of this.currentScene.entities) {
-            if (entity.active !== false && entity.update) {
-                entity.update(dt, this.engine.input, this.engine);
-            }
-        }
-
-        this.currentScene.entities = this.currentScene.entities.filter(
-            entity => !entity.destroyed
-        );
+        this.#tickEntities(dt, input ?? this.engine.input);
     }
 
     draw(ctx = this.ctx) {
         if (!this.currentScene) return;
 
-        if (this.currentScene.draw) {
-            this.currentScene.draw(ctx, this.engine);
+        const scene = this.currentScene;
+        if (typeof scene.draw === 'function') {
+            scene.draw(ctx, this.engine);
         }
 
-        if (this.currentScene.entities) {
-            for (const entity of this.currentScene.entities) {
-                this.engine.drawEntity(ctx, entity);
-            }
+        const list = scene.entities;
+        if (!list || list.length === 0) return;
+
+        const engine = this.engine;
+        for (let i = 0; i < list.length; i++) {
+            const entity = list[i];
+            if (!entity || entity.destroyed) continue;
+            engine.drawEntity(ctx, entity);
         }
     }
 
@@ -99,13 +145,78 @@ export class BeeSceneManager {
     getCurrentSceneName() {
         return this.currentSceneName;
     }
-}
 
-/** 🌟 * Classe BeeSceneManager: Gestisce la transizione e il rendering delle scene nel gioco.
- * Permette di organizzare il contenuto del gioco in diverse "scene" (menu, livelli, ecc.),
- * caricando e disegnando gli elementi appropriati per ogni stato del gioco.
- /**
- * Classe BeeSceneManager: Coordina il passaggio tra le diverse schermate (scene) del gioco.
- * Controlla quale scena deve essere attiva in ogni momento, gestendo la transizione fluida
- * dal Menu Principale (BeeMenuScene), alla partita vera e propria, fino al Game Over.
- */
+    destroy() {
+        this.#leave(this.currentScene);
+        for (const scene of this.scenes.values()) {
+            this.#sweep(scene);
+        }
+        this.scenes.clear();
+        this.currentScene = null;
+        this.currentSceneName = null;
+        if (this.engine) this.engine.currentScene = null;
+        return this;
+    }
+
+    #id(name, method) {
+        if (name === undefined || name === null || name === '') {
+            throw new Error(`BeeSceneManager.${method}: name required`);
+        }
+        return String(name);
+    }
+
+    #leave(scene) {
+        if (!scene) return;
+        if (typeof scene.onExit === 'function') {
+            scene.onExit();
+        } else if (typeof scene.exit === 'function') {
+            scene.exit();
+        }
+        this.#sweep(scene);
+    }
+
+    #enter(scene, data) {
+        scene.engine = this.engine;
+        if (!Array.isArray(scene.entities)) {
+            scene.entities = [];
+        }
+        if (typeof scene.onEnter === 'function') {
+            scene.onEnter(data);
+        } else if (typeof scene.enter === 'function') {
+            scene.enter(data);
+        }
+    }
+
+    #sweep(scene) {
+        if (!scene || scene.persistEntities) return;
+        const list = scene.entities;
+        if (!list || list.length === 0) return;
+        for (let i = 0; i < list.length; i++) {
+            const entity = list[i];
+            if (entity && !entity.destroyed && typeof entity.destroy === 'function') {
+                entity.destroy();
+            }
+        }
+        list.length = 0;
+    }
+
+    #tickEntities(dt, input) {
+        const list = this.currentScene.entities;
+        if (!list || list.length === 0) return;
+
+        const engine = this.engine;
+        let write = 0;
+        for (let read = 0; read < list.length; read++) {
+            const entity = list[read];
+            if (!entity || entity.destroyed) continue;
+            if (entity.active !== false && typeof entity.update === 'function') {
+                entity.update(dt, input, engine);
+            }
+            if (!entity.destroyed) {
+                list[write] = entity;
+                write += 1;
+            }
+        }
+        list.length = write;
+    }
+}
