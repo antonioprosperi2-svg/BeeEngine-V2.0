@@ -1,4 +1,5 @@
 import { BeeRectCollider } from '../physics/BeeRectCollider.js';
+import { BeeRigidBody } from '../physics/BeeRigidBody.js';
 import { BeeTransform, BEE_TRANSFORM_DEFAULTS } from './BeeTransform.js';
 
 /**
@@ -80,6 +81,7 @@ export class BeeEntity {
         this.visible = true;
         this.destroyed = false;
         this.collider = null;
+        this.body = null;
     }
 
     #parent = null;
@@ -150,6 +152,10 @@ export class BeeEntity {
     }
 
     getWorldAABB() {
+        if (this.body) {
+            const box = this.body.getWorldAABB();
+            return { x: box.x, y: box.y, width: box.width, height: box.height };
+        }
         return this.transform.getWorldAABB(this.width, this.height, {
             x: 0,
             y: 0,
@@ -177,6 +183,19 @@ export class BeeEntity {
             current = current.#parent;
         }
         return false;
+    }
+
+    addRigidBody(options = {}) {
+        if (this.body) this.body.destroy();
+        const world = options.world;
+        this.body = new BeeRigidBody({
+            ...options,
+            entity: this,
+            transform: this.transform,
+            shape: options.shape || BeeRigidBody.box(this.width, this.height)
+        });
+        if (world) world.add(this.body);
+        return this.body;
     }
 
     addRectCollider(offsetX = 0, offsetY = 0, width = null, height = null) {
@@ -283,6 +302,7 @@ export class BeeEntity {
     }
 
     integrate(dt) {
+        if (this.body) return;
         if (!this.active || this.destroyed || dt <= 0) return;
 
         if (this.gravity !== 0 && !this.isGrounded) {
@@ -350,6 +370,11 @@ export class BeeEntity {
         }
 
         this.transform.onDirty = null;
+
+        if (this.body) {
+            this.body.destroy();
+            this.body = null;
+        }
 
         if (this.collider && this.collider.entity === this) {
             this.collider.entity = null;

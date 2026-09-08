@@ -39,6 +39,14 @@ import { BeeText } from './src/graphics/BeeText.js';
 import { BeeCollisionSystem } from './src/physics/BeeCollisionSystem.js';
 import { BeeRectCollider } from './src/physics/BeeRectCollider.js';
 import { BeeBullet } from './src/physics/BeeBullet.js';
+import {
+    BeeRigidBody,
+    BEE_BODY_DEFAULTS,
+    BEE_BODY_TYPE,
+    BEE_SHAPE,
+    BEE_LAYER
+} from './src/physics/BeeRigidBody.js';
+import { BeePhysicsWorld, BEE_PHYSICS_DEFAULTS } from './src/physics/BeePhysicsWorld.js';
 
 // ==========================================
 // 5. GAMEPLAY & ENTITIES (src/gameplay/)
@@ -69,6 +77,7 @@ export class BeeEngine {
 
         this.entities = [];
         this.collisions = new BeeCollisionSystem(this);
+        this.physics = new BeePhysicsWorld();
         this.time = new BeeTime();
         this.save = new BeeSaveStore();
         this.debug = new BeeLadybug(this);
@@ -139,6 +148,7 @@ export class BeeEngine {
     }
 
     setScene(name, data = null) {
+        this.physics.clear();
         this.entities = [];
         if (this.scenes) {
             this.scenes.change(name, data);
@@ -221,6 +231,7 @@ export class BeeEngine {
         if (this.debug && typeof this.debug.destroy === 'function') {
             this.debug.destroy();
         }
+        if (this.physics) this.physics.clear();
     }
 
     start(updateCallback, renderCallback) {
@@ -255,6 +266,7 @@ export class BeeEngine {
             }
 
             this.updateEntities(dt, this.input);
+            this.time.consumeFixedSteps((fixedDt) => this.physics.step(fixedDt));
         }
 
         if (this.update) {
@@ -449,6 +461,11 @@ export {
     BEE_SAVE_DEFAULTS,
     BEE_SAVE_STATUS,
     BEE_LADYBUG_DEFAULTS,
+    BEE_PHYSICS_DEFAULTS,
+    BEE_BODY_DEFAULTS,
+    BEE_BODY_TYPE,
+    BEE_SHAPE,
+    BEE_LAYER,
     BeeTime,
     BeeTransform,
     BeeLadybug,
@@ -477,6 +494,8 @@ export {
     BeePlatform,
     BeeCollectible,
     BeeCollisionSystem,
+    BeeRigidBody,
+    BeePhysicsWorld,
     BeeSpriteSheet,
     BeeAnimatedSprite,
     BeeTilemapLoader,

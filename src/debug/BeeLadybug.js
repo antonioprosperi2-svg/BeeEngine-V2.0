@@ -175,6 +175,13 @@ export class BeeLadybug {
             }
         }
 
+        const phys = engine.physics && engine.physics.bodies;
+        if (phys) {
+            for (let i = 0; i < phys.length; i++) {
+                visit(phys[i].entity);
+            }
+        }
+
         return list;
     }
 
@@ -253,7 +260,9 @@ export class BeeLadybug {
             ctx.fillRect(box.x, box.y, box.width, box.height);
 
             const xf = entity.transform;
-            if (xf && typeof xf.transformPoint === 'function') {
+            if (entity.body && typeof entity.body.drawDebug === 'function') {
+                entity.body.drawDebug(ctx, color);
+            } else if (xf && typeof xf.transformPoint === 'function') {
                 const w = entity.width || box.width;
                 const h = entity.height || box.height;
                 const p0 = xf.transformPoint(0, 0, { x: 0, y: 0 });

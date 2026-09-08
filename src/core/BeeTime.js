@@ -206,7 +206,7 @@ export class BeeTime {
     }
 
     /**
-     * Step fisso per un futuro solver (massa/impulsi). Oggi il loop usa ancora dt variabile.
+     * Step fisso per il solver di BeePhysicsWorld (massa/impulsi).
      * @param {(fixedDt: number) => void} callback
      */
     consumeFixedSteps(callback) {

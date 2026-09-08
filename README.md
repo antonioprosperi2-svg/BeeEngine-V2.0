@@ -10,7 +10,7 @@ La versione 2.5 introduce **BeeTransform**: scena grafo affine (posizione, rotaz
 BeeEngine-V2.5/
 ├── index.html                  # Punto di ingresso HTML e configurazione Canvas
 ├── index.js                    # Barrel ESM (re-export di BeeEngine.js)
-├── main.js                     # Demo visiva (BeeTransform: parent/figli in orbita)
+├── main.js                     # Demo visiva (BeePhysicsWorld: massa, trigger, layer)
 ├── BeeEngine.js                # Il CUORE del motore (Core Loop & System Coordinator)
 ├── README.md                   # Documentazione ufficiale e specifiche tecniche
 ├── package.json                # Manifest di configurazione per la pubblicazione NPM
@@ -24,7 +24,7 @@ BeeEngine-V2.5/
     ├── gameplay/               # Player, enemy, platform, collectible, menu
     ├── graphics/               # Camera, sprite, tilemap, text, particles
     ├── input/                  # Tastiera, mouse, joystick, touch, button
-    ├── physics/                # Collisioni, collider, bullet
+    ├── physics/                # BeePhysicsWorld, BeeRigidBody, collisioni AABB, bullet
     └── debug/                  # BeeLadybug: overlay e hitbox
 ```
 
@@ -93,6 +93,36 @@ ctx.restore();
 ```
 
 `getWorldAABB()` è l'AABB dell'OBB ruotato: Ladybug disegna i quattro spigoli, il culling usa i bounds giusti.
+
+## ⚖ BeeRigidBody + BeePhysicsWorld — corpo e mondo, non AABB a gruppi
+
+`BeeEntity` resta dati. `BeeTransform` resta geometria. La fisica vive in `gioco.physics` (`BeePhysicsWorld`): gravità di scena, massa, impulsi, layer/mask, forme box/cerchio/capsula. `BeeCollisionSystem` **non** è questo: è ancora il risolutore AABB a gruppi per il platformer.
+
+Il loop chiama `time.consumeFixedSteps` → `physics.step`. Se l'entità ha un `body`, `integrate()` non si muove da sola.
+
+| Layer | Uso tipico |
+| --- | --- |
+| `BEE_LAYER.WORLD` | pavimento, muri |
+| `BEE_LAYER.PLAYER` | corpi dinamici di gameplay |
+| `BEE_LAYER.TRIGGER` | sensor: `isTrigger`, niente bounce |
+| `BEE_LAYER.GHOST` | il player lo ignora se non è nel `mask` |
+
+```javascript
+const body = entity.addRigidBody({
+    world: gioco.physics,
+    type: 'dynamic',
+    mass: 2,
+    shape: BeeRigidBody.circle(18),
+    layer: BEE_LAYER.PLAYER,
+    mask: BEE_LAYER.WORLD | BEE_LAYER.PLAYER | BEE_LAYER.TRIGGER
+});
+body.applyImpulse(0, -420);
+
+gioco.physics.gravityY = 980;
+gioco.physics.onBeginOverlap = (a, b) => { /* trigger o sensor */ };
+```
+
+Click in demo: impulso verso il puntatore. F2 Ladybug disegna la forma del body, non solo il rettangolo.
 
 ## 💾 BeeSave — persistenza DTO, non `setItem` nudo
 
