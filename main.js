@@ -10,20 +10,7 @@ const gioco = new BeeEngine('testCanvas', 800, 600);
 gioco.enableAutoResize(800, 600, 100);
 window.gioco = gioco;
 
-let triggerHits = 0;
-let triggerInside = 0;
-
-gioco.physics.onBeginOverlap = (a, b) => {
-    if (a.isTrigger || b.isTrigger) {
-        triggerHits += 1;
-        triggerInside += 1;
-    }
-};
-gioco.physics.onEndOverlap = (a, b) => {
-    if (a.isTrigger || b.isTrigger) {
-        triggerInside = Math.max(0, triggerInside - 1);
-    }
-};
+const COLORS = ['#4a90e2', '#f0a202', '#e85d4c', '#7ad17a', '#d8d8d8', '#c1783a'];
 
 class PhysActor extends BeeEntity {
     constructor(x, y, width, height, color, bodyOptions) {
@@ -50,17 +37,6 @@ class PhysActor extends BeeEntity {
             ctx.arc(r, r, r, 0, Math.PI * 2);
             ctx.fill();
             ctx.stroke();
-        } else if (this.shapeType === 'capsule') {
-            const r = Math.min(this.width, this.height) / 2;
-            if (typeof ctx.roundRect === 'function') {
-                ctx.beginPath();
-                ctx.roundRect(0, 0, this.width, this.height, r);
-                ctx.fill();
-                ctx.stroke();
-            } else {
-                ctx.fillRect(0, 0, this.width, this.height);
-                ctx.strokeRect(0, 0, this.width, this.height);
-            }
         } else {
             ctx.fillRect(0, 0, this.width, this.height);
             ctx.strokeRect(0, 0, this.width, this.height);
@@ -70,84 +46,50 @@ class PhysActor extends BeeEntity {
     }
 }
 
-const floor = new PhysActor(400, 560, 760, 40, '#3d4a3a', {
-    type: BEE_BODY_TYPE.STATIC,
-    shape: BeeRigidBody.box(760, 40),
-    layer: BEE_LAYER.WORLD,
-    mask: BEE_LAYER.ALL
-});
-const left = new PhysActor(20, 300, 40, 520, '#3d4a3a', {
-    type: BEE_BODY_TYPE.STATIC,
-    shape: BeeRigidBody.box(40, 520),
-    layer: BEE_LAYER.WORLD
-});
-const right = new PhysActor(780, 300, 40, 520, '#3d4a3a', {
-    type: BEE_BODY_TYPE.STATIC,
-    shape: BeeRigidBody.box(40, 520),
-    layer: BEE_LAYER.WORLD
-});
+const walls = [
+    new PhysActor(400, 580, 780, 28, '#3d4a3a', {
+        type: BEE_BODY_TYPE.STATIC,
+        shape: BeeRigidBody.box(780, 28),
+        layer: BEE_LAYER.WORLD
+    }),
+    new PhysActor(20, 300, 28, 560, '#3d4a3a', {
+        type: BEE_BODY_TYPE.STATIC,
+        shape: BeeRigidBody.box(28, 560),
+        layer: BEE_LAYER.WORLD
+    }),
+    new PhysActor(780, 300, 28, 560, '#3d4a3a', {
+        type: BEE_BODY_TYPE.STATIC,
+        shape: BeeRigidBody.box(28, 560),
+        layer: BEE_LAYER.WORLD
+    })
+];
 
-const sensor = new PhysActor(400, 430, 160, 80, 'rgba(61, 255, 106, 0.28)', {
-    type: BEE_BODY_TYPE.STATIC,
-    isTrigger: true,
-    shape: BeeRigidBody.box(160, 80),
-    layer: BEE_LAYER.TRIGGER,
-    mask: BEE_LAYER.PLAYER
-});
+const swarm = [];
+const playerMask = BEE_LAYER.WORLD | BEE_LAYER.PLAYER;
+for (let i = 0; i < 56; i++) {
+    const size = 12 + (i % 4) * 3;
+    const ball = new PhysActor(
+        80 + (i % 10) * 64,
+        40 + Math.floor(i / 10) * 42,
+        size,
+        size,
+        COLORS[i % COLORS.length],
+        {
+            type: BEE_BODY_TYPE.DYNAMIC,
+            mass: size / 16,
+            restitution: 0.45,
+            shape: BeeRigidBody.circle(size / 2),
+            layer: BEE_LAYER.PLAYER,
+            mask: playerMask
+        }
+    );
+    swarm.push(ball);
+}
 
-const ghost = new PhysActor(620, 320, 140, 24, '#7a5cff', {
-    type: BEE_BODY_TYPE.STATIC,
-    shape: BeeRigidBody.box(140, 24),
-    layer: BEE_LAYER.GHOST,
-    mask: BEE_LAYER.GHOST | BEE_LAYER.WORLD
-});
-
-const playerMask = BEE_LAYER.WORLD | BEE_LAYER.PLAYER | BEE_LAYER.TRIGGER;
-
-const ballA = new PhysActor(220, 80, 36, 36, '#4a90e2', {
-    type: BEE_BODY_TYPE.DYNAMIC,
-    mass: 1.2,
-    restitution: 0.35,
-    shape: BeeRigidBody.circle(18),
-    layer: BEE_LAYER.PLAYER,
-    mask: playerMask
-});
-const ballB = new PhysActor(300, 40, 28, 28, '#f0a202', {
-    type: BEE_BODY_TYPE.DYNAMIC,
-    mass: 0.8,
-    restitution: 0.55,
-    shape: BeeRigidBody.circle(14),
-    layer: BEE_LAYER.PLAYER,
-    mask: playerMask
-});
-const crate = new PhysActor(400, 90, 48, 48, '#c1783a', {
-    type: BEE_BODY_TYPE.DYNAMIC,
-    mass: 2,
-    restitution: 0.1,
-    shape: BeeRigidBody.box(48, 48),
-    layer: BEE_LAYER.PLAYER,
-    mask: playerMask,
-    omega: 1.2
-});
-const capsule = new PhysActor(500, 50, 28, 64, '#e85d4c', {
-    type: BEE_BODY_TYPE.DYNAMIC,
-    mass: 1.4,
-    restitution: 0.2,
-    shape: BeeRigidBody.capsule(14, 36),
-    layer: BEE_LAYER.PLAYER,
-    mask: playerMask
-});
-const scanner = new PhysActor(640, 80, 24, 24, '#d8d8d8', {
-    type: BEE_BODY_TYPE.DYNAMIC,
-    mass: 0.6,
-    restitution: 0.4,
-    shape: BeeRigidBody.circle(12),
-    layer: BEE_LAYER.GHOST,
-    mask: BEE_LAYER.WORLD | BEE_LAYER.GHOST
-});
+let lastHits = 0;
 
 const scene = {
-    entities: [floor, left, right, sensor, ghost, ballA, ballB, crate, capsule, scanner],
+    entities: [...walls, ...swarm],
 
     draw(ctx) {
         ctx.fillStyle = '#0d1020';
@@ -155,31 +97,32 @@ const scene = {
 
         ctx.fillStyle = '#ffe08a';
         ctx.font = 'bold 20px monospace';
-        ctx.fillText('BeePhysicsWorld — massa e layer, non AABB a gruppi', 24, 36);
+        ctx.fillText('BeeSpatialHash — chi è vicino, non tutte le coppie', 24, 36);
         ctx.font = '14px monospace';
         ctx.fillStyle = '#c8c8c8';
-        ctx.fillText('Verde = trigger (niente bounce). Viola = ghost: il player lo attraversa, lo scanner no.', 24, 58);
-        ctx.fillText(`Trigger hits: ${triggerHits}   inside: ${triggerInside}   click = impulso`, 24, 80);
-        ctx.fillText('F2 Ladybug: forma del body. F4 freeze.', 24, 102);
+        ctx.fillText(`Body: ${gioco.physics.bodies.length}   celle: ${gioco.spatial.cellCount}   last blast: ${lastHits}`, 24, 58);
+        ctx.fillText('Click = queryRadius 90px (esplosione). F2 Ladybug.', 24, 80);
     }
 };
 
-gioco.scenes.add('physics', scene);
-gioco.scenes.change('physics');
+gioco.scenes.add('spatial', scene);
+gioco.scenes.change('spatial');
 gioco.enableLadybug();
 gioco.start();
 
 gioco.canvas.addEventListener('pointerdown', (event) => {
     const pos = gioco.input.getCanvasPosition(event.clientX, event.clientY);
-    const bodies = gioco.physics.bodies;
-    for (let i = 0; i < bodies.length; i++) {
-        const body = bodies[i];
+    const hits = gioco.physics.queryRadius(pos.x, pos.y, 90);
+    lastHits = hits.length;
+    for (let i = 0; i < hits.length; i++) {
+        const body = hits[i];
         if (body.type !== BEE_BODY_TYPE.DYNAMIC) continue;
         body.readPose();
-        const dx = pos.x - body.pose.x;
-        const dy = pos.y - body.pose.y;
+        const dx = body.pose.x - pos.x;
+        const dy = body.pose.y - pos.y;
         const dist = Math.hypot(dx, dy) || 1;
-        body.applyImpulse((dx / dist) * 280, (dy / dist) * 280);
+        const power = 420 * (1 - Math.min(1, dist / 90));
+        body.applyImpulse((dx / dist) * power, (dy / dist) * power - 80);
     }
 });
 

@@ -356,6 +356,7 @@ export declare class BeeCamera {
 export declare class BeeCollisionSystem {
   engine: BeeEngine;
   groups: Map<string, object[]>;
+  hash: BeeSpatialHash;
 
   constructor(engine: BeeEngine);
 
@@ -367,6 +368,27 @@ export declare class BeeCollisionSystem {
   solid(moversGroup: string, solidsGroup: string): this;
   overlap(groupA: string, groupB: string, callback: BeeOverlapCallback): this;
   run(): void;
+}
+
+export declare const BEE_SPATIAL_HASH_DEFAULTS: Readonly<{
+  cellSize: number;
+}>;
+
+export declare class BeeSpatialHash {
+  cellSize: number;
+  itemCount: number;
+  insertCount: number;
+  readonly cellCount: number;
+
+  constructor(options?: { cellSize?: number });
+
+  configure(options?: { cellSize?: number }): this;
+  clear(): this;
+  insert(item: object, box?: BeeRect | null): this;
+  query(aabb: BeeRect, out?: object[]): object[];
+  queryPoint(x: number, y: number, out?: object[]): object[];
+  queryRadius(x: number, y: number, radius: number, out?: object[]): object[];
+  forEachPair(callback: (a: object, b: object) => void): number;
 }
 
 // ---------------------------------------------------------------------------
@@ -412,6 +434,8 @@ export interface BeePhysicsWorldOptions {
   slop?: number;
   baumgarte?: number;
   maxVelocity?: number;
+  cellSize?: number;
+  hash?: BeeSpatialHash;
 }
 
 export declare const BEE_BODY_TYPE: Readonly<{
@@ -457,6 +481,7 @@ export declare const BEE_PHYSICS_DEFAULTS: Readonly<{
   slop: number;
   baumgarte: number;
   maxVelocity: number;
+  cellSize: number;
 }>;
 
 export declare class BeeRigidBody {
@@ -512,6 +537,7 @@ export declare class BeePhysicsWorld {
   slop: number;
   baumgarte: number;
   maxVelocity: number;
+  hash: BeeSpatialHash;
   onBeginOverlap: ((a: BeeRigidBody, b: BeeRigidBody) => void) | null;
   onEndOverlap: ((a: BeeRigidBody, b: BeeRigidBody) => void) | null;
   readonly bodies: BeeRigidBody[];
@@ -524,6 +550,9 @@ export declare class BeePhysicsWorld {
   clear(): this;
   createBody(options?: BeeRigidBodyOptions): BeeRigidBody;
   step(dt: number): this;
+  query(aabb: BeeRect, out?: BeeRigidBody[]): BeeRigidBody[];
+  queryPoint(x: number, y: number, out?: BeeRigidBody[]): BeeRigidBody[];
+  queryRadius(x: number, y: number, radius: number, out?: BeeRigidBody[]): BeeRigidBody[];
 }
 
 export declare class BeePlayer extends BeeEntity {
@@ -1193,6 +1222,7 @@ export declare class BeeEngine {
   entities: BeeEntity[];
   collisions: BeeCollisionSystem;
   physics: BeePhysicsWorld;
+  spatial: BeeSpatialHash;
   time: BeeTime;
   save: BeeSaveStore;
   debug: BeeLadybug;

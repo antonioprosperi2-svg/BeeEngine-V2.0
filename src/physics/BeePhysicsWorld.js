@@ -4,6 +4,7 @@
  */
 
 import { BeeRigidBody, BEE_BODY_TYPE, BEE_SHAPE } from './BeeRigidBody.js';
+import { BeeSpatialHash, BEE_SPATIAL_HASH_DEFAULTS } from './BeeSpatialHash.js';
 
 export const BEE_PHYSICS_DEFAULTS = Object.freeze({
     gravityX: 0,
@@ -11,7 +12,8 @@ export const BEE_PHYSICS_DEFAULTS = Object.freeze({
     iterations: 8,
     slop: 0.5,
     baumgarte: 0.8,
-    maxVelocity: 2400
+    maxVelocity: 2400,
+    cellSize: BEE_SPATIAL_HASH_DEFAULTS.cellSize
 });
 
 function aabbOverlap(a, b) {
@@ -361,6 +363,9 @@ export class BeePhysicsWorld {
         this.maxVelocity = cfg.maxVelocity;
         this.onBeginOverlap = null;
         this.onEndOverlap = null;
+        this.hash = options.hash instanceof BeeSpatialHash
+            ? options.hash
+            : new BeeSpatialHash({ cellSize: cfg.cellSize });
 
         this.#bodies = [];
         this.#contacts = [];
@@ -411,6 +416,7 @@ export class BeePhysicsWorld {
         this.#contactCount = 0;
         this.#overlaps.clear();
         this.#nextOverlaps.clear();
+        this.hash.clear();
         return this;
     }
 
@@ -441,28 +447,41 @@ export class BeePhysicsWorld {
 
     #collectContacts() {
         const list = this.#bodies;
-        let count = 0;
-        const n = list.length;
-        for (let i = 0; i < n; i++) {
-            const a = list[i];
-            if (!a.enabled) continue;
-            if (a.entity && (a.entity.destroyed || a.entity.active === false)) continue;
-            for (let j = i + 1; j < n; j++) {
-                const b = list[j];
-                if (!b.enabled) continue;
-                if (b.entity && (b.entity.destroyed || b.entity.active === false)) continue;
-                if (!a.collidesWith(b)) continue;
-                if (a.invMass === 0 && b.invMass === 0 && a.type !== BEE_BODY_TYPE.KINEMATIC && b.type !== BEE_BODY_TYPE.KINEMATIC) {
-                    if (!a.isTrigger && !b.isTrigger) continue;
-                }
-                if (!aabbOverlap(a.aabb, b.aabb)) continue;
-                const contact = this.#contact(count);
-                if (collide(a, b, contact)) {
-                    count += 1;
-                }
-            }
+        const hash = this.hash;
+        hash.clear();
+
+        for (let i = 0; i < list.length; i++) {
+            const body = list[i];
+            if (!body.enabled) continue;
+            if (body.entity && (body.entity.destroyed || body.entity.active === false)) continue;
+            hash.insert(body, body.aabb);
         }
+
+        let count = 0;
+        hash.forEachPair((a, b) => {
+            if (!a.collidesWith(b)) return;
+            if (a.invMass === 0 && b.invMass === 0 && a.type !== BEE_BODY_TYPE.KINEMATIC && b.type !== BEE_BODY_TYPE.KINEMATIC) {
+                if (!a.isTrigger && !b.isTrigger) return;
+            }
+            if (!aabbOverlap(a.aabb, b.aabb)) return;
+            const contact = this.#contact(count);
+            if (collide(a, b, contact)) {
+                count += 1;
+            }
+        });
         this.#contactCount = count;
+    }
+
+    query(aabb, out) {
+        return this.hash.query(aabb, out);
+    }
+
+    queryPoint(x, y, out) {
+        return this.hash.queryPoint(x, y, out);
+    }
+
+    queryRadius(x, y, radius, out) {
+        return this.hash.queryRadius(x, y, radius, out);
     }
 
     #resolveContact(contact) {

@@ -47,6 +47,7 @@ import {
     BEE_LAYER
 } from './src/physics/BeeRigidBody.js';
 import { BeePhysicsWorld, BEE_PHYSICS_DEFAULTS } from './src/physics/BeePhysicsWorld.js';
+import { BeeSpatialHash, BEE_SPATIAL_HASH_DEFAULTS } from './src/physics/BeeSpatialHash.js';
 
 // ==========================================
 // 5. GAMEPLAY & ENTITIES (src/gameplay/)
@@ -78,6 +79,7 @@ export class BeeEngine {
         this.entities = [];
         this.collisions = new BeeCollisionSystem(this);
         this.physics = new BeePhysicsWorld();
+        this.spatial = this.physics.hash;
         this.time = new BeeTime();
         this.save = new BeeSaveStore();
         this.debug = new BeeLadybug(this);
@@ -477,6 +479,7 @@ export {
     BEE_BODY_TYPE,
     BEE_SHAPE,
     BEE_LAYER,
+    BEE_SPATIAL_HASH_DEFAULTS,
     BeeTime,
     BeeTransform,
     BeeLadybug,
@@ -507,6 +510,7 @@ export {
     BeeCollisionSystem,
     BeeRigidBody,
     BeePhysicsWorld,
+    BeeSpatialHash,
     BeeSpriteSheet,
     BeeAnimatedSprite,
     BeeTilemapLoader,

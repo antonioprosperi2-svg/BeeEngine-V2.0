@@ -5,6 +5,7 @@
  * F2 apre/chiude. F3 slow-motion. F4 freeze del frame (pausa simulazione).
  * Non usa F12 né la tilde: sui layout italiani la tilde non è un tasto unico.
  */
+import { BeeSpatialHash } from '../physics/BeeSpatialHash.js';
 export const BEE_LADYBUG_DEFAULTS = Object.freeze({
     toggleKey: 'F2',
     slowKey: 'F3',
@@ -29,6 +30,9 @@ export class BeeLadybug {
         this.enabled = false;
         this.#entities = [];
         this.#colliding = new Set();
+        this.#hash = new BeeSpatialHash();
+        this.#boxes = [];
+        this.#boxMap = new Map();
         this.#buttons = [];
         this.#onKeyDown = (event) => this.#handleKey(event);
         this.#bound = false;
@@ -36,6 +40,9 @@ export class BeeLadybug {
 
     #entities;
     #colliding;
+    #hash;
+    #boxes;
+    #boxMap;
     #buttons;
     #onKeyDown;
     #bound;
@@ -203,33 +210,37 @@ export class BeeLadybug {
         const colliding = this.#colliding;
         colliding.clear();
 
-        const boxes = [];
-        for (let i = 0; i < list.length; i++) {
-            const bounds = this.#aabbOf(list[i]);
-            if (!bounds || bounds.width <= 0 || bounds.height <= 0) {
-                boxes.push(null);
-                continue;
-            }
-            boxes.push(bounds);
-        }
+        const hash = this.#hash;
+        const boxes = this.#boxes;
+        const map = this.#boxMap;
+        hash.clear();
+        map.clear();
+        boxes.length = list.length;
 
         for (let i = 0; i < list.length; i++) {
-            const a = boxes[i];
-            if (!a) continue;
-            for (let j = i + 1; j < list.length; j++) {
-                const b = boxes[j];
-                if (!b) continue;
-                if (
-                    a.x < b.x + b.width &&
-                    a.x + a.width > b.x &&
-                    a.y < b.y + b.height &&
-                    a.y + a.height > b.y
-                ) {
-                    colliding.add(list[i]);
-                    colliding.add(list[j]);
-                }
+            const bounds = this.#aabbOf(list[i]);
+            const box = bounds && bounds.width > 0 && bounds.height > 0 ? bounds : null;
+            boxes[i] = box;
+            if (box) {
+                hash.insert(list[i], box);
+                map.set(list[i], box);
             }
         }
+
+        hash.forEachPair((entityA, entityB) => {
+            const a = map.get(entityA);
+            const b = map.get(entityB);
+            if (!a || !b) return;
+            if (
+                a.x < b.x + b.width &&
+                a.x + a.width > b.x &&
+                a.y < b.y + b.height &&
+                a.y + a.height > b.y
+            ) {
+                colliding.add(entityA);
+                colliding.add(entityB);
+            }
+        });
     }
 
     /**

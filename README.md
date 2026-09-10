@@ -1,4 +1,4 @@
-![alt text](Gemini_Generated_Image_pz9goopz9goopz9g.jpg)
+![BeeEngine](https://raw.githubusercontent.com/antonioprosperi2-svg/BeeEngine-V2.0/main/Gemini_Generated_Image_pz9goopz9goopz9g.jpg)
 # 🐝 Motore di gioco 2D BeeEngine (v2.5.0 Professional)
 
 BeeEngine è un motore di gioco 2D leggero, modulare e altamente ottimizzato scritto in puro JavaScript moderno (ES Modules) per HTML5 Canvas.
@@ -10,7 +10,7 @@ La versione 2.5 introduce **BeeTransform**: scena grafo affine (posizione, rotaz
 BeeEngine-V2.5/
 ├── index.html                  # Punto di ingresso HTML e configurazione Canvas
 ├── index.js                    # Barrel ESM (re-export di BeeEngine.js)
-├── main.js                     # Demo visiva (BeePhysicsWorld: massa, trigger, layer)
+├── main.js                     # Demo visiva (BeeSpatialHash: stormo + esplosione)
 ├── BeeEngine.js                # Il CUORE del motore (Core Loop & System Coordinator)
 ├── README.md                   # Documentazione ufficiale e specifiche tecniche
 ├── package.json                # Manifest di configurazione per la pubblicazione NPM
@@ -24,7 +24,7 @@ BeeEngine-V2.5/
     ├── gameplay/               # Player, enemy, platform, collectible, menu
     ├── graphics/               # Camera, sprite, tilemap, text, particles
     ├── input/                  # Tastiera, mouse, joystick, touch, button
-    ├── physics/                # BeePhysicsWorld, BeeRigidBody, collisioni AABB, bullet
+    ├── physics/                # BeeSpatialHash, BeePhysicsWorld, BeeRigidBody, AABB groups
     └── debug/                  # BeeLadybug: overlay e hitbox
 ```
 
@@ -139,6 +139,19 @@ gioco.physics.onBeginOverlap = (a, b) => { /* trigger o sensor */ };
 ```
 
 Click in demo: impulso verso il puntatore. F2 Ladybug disegna la forma del body, non solo il rettangolo.
+
+## 🗺 BeeSpatialHash — chi è vicino a questo AABB?
+
+Le coppie n² esplodono con decine di proiettili. `BeeSpatialHash` è un indice a celle (non un quadtree: i body di gameplay hanno taglia simile, l'hash è più stabile). `gioco.physics.hash` si ricostruisce ogni `step`. `gioco.spatial` è lo stesso indice, per i query di gioco.
+
+```javascript
+const hits = gioco.physics.queryRadius(x, y, 80);
+for (let i = 0; i < hits.length; i++) {
+    hits[i].applyImpulse(0, -300);   // esplosione
+}
+```
+
+`BeeCollisionSystem` e Ladybug usano lo stesso broadphase. Cella default 64px (`cellSize`).
 
 ## 💾 BeeSave — persistenza DTO, non `setItem` nudo
 
@@ -277,4 +290,4 @@ gioco.start();
 
 ---
 
-![alt text](download.png)
+![BeeEngine](https://raw.githubusercontent.com/antonioprosperi2-svg/BeeEngine-V2.0/main/download.png)
