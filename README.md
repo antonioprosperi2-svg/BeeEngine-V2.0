@@ -60,12 +60,13 @@ hudTick.update(gioco.time);
 
 ### API essenziale
 
-* `gioco.time.dt` — delta di simulazione (già clampato a `maxDelta`, default 50 ms).
-* `gioco.time.unscaledDt` — delta reale dello stesso frame.
-* `gioco.time.timeScale` — 0.25 / 1 / 2…
+* `gioco.time.dt` — delta di simulazione (`unscaledDt * timeScale`; 0 in pausa). `maxDelta` (default 50 ms) clamp-a il tempo **reale**, prima della scala.
+* `gioco.time.unscaledDt` — delta reale dello stesso frame (vive in pausa).
+* `gioco.time.timeScale` — 0.25 / 1 / 2… (clamp 0–16 via `setScale`; il costruttore non clamp-a).
+* `gioco.time.begin()` — allinea il timestamp senza azzerare elapsed (start / ripartenza dopo `stop`).
 * `gioco.time.fps` — stima su finestra 0.5 s di tempo reale.
-* `gioco.time.consumeFixedSteps(fn)` — accumulatore 1/60 pronto per un futuro solver fisico (il loop attuale resta a dt variabile).
-* `BeeTimer(..., { useUnscaledTime: true })` — cooldown sul tempo reale.
+* `gioco.time.consumeFixedSteps(fn)` — il loop lo chiama verso `physics.step` (passo 1/60, max 5). Le entity senza `body` restano a dt variabile.
+* `BeeTimer(..., { useUnscaledTime: true })` — cooldown sul tempo reale; va aggiornato nel callback `engine.update` se deve vivere in pausa (`scene.update` in freeze non parte).
 
 Demo visiva: apri `index.html` (via `main.js`). **F2** apre BeeLadybug.
 
