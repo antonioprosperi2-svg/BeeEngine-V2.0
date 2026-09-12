@@ -7,14 +7,28 @@ export class BeeAnimatedSprite {
         this.currentFrameIndex = 0;
         this.timer = 0;
         this.flipX = false;
+        this.#finished = false;
     }
 
-    play(name) {
-        if (this.currentAnimName !== name && this.animations[name]) {
-            this.currentAnimName = name;
-            this.currentFrameIndex = 0;
-            this.timer = 0;
-        }
+    #finished;
+
+    get finished() {
+        return this.#finished;
+    }
+
+    get clip() {
+        return this.currentAnimName;
+    }
+
+    play(name, options = {}) {
+        if (!this.animations[name]) return this;
+        if (this.currentAnimName === name && !options.restart) return this;
+
+        this.currentAnimName = name;
+        this.currentFrameIndex = 0;
+        this.timer = 0;
+        this.#finished = false;
+        return this;
     }
 
     /**
@@ -22,7 +36,7 @@ export class BeeAnimatedSprite {
      */
     update(dt) {
         const anim = this.animations[this.currentAnimName];
-        if (!anim || !anim.frames || anim.frames.length === 0) return;
+        if (!anim || !anim.frames || anim.frames.length === 0) return this;
 
         const fps = anim.fps || 8;
         const frameDuration = 1 / fps;
@@ -34,10 +48,15 @@ export class BeeAnimatedSprite {
 
             if (anim.loop) {
                 this.currentFrameIndex = (this.currentFrameIndex + 1) % anim.frames.length;
+                this.#finished = false;
+            } else if (this.currentFrameIndex < anim.frames.length - 1) {
+                this.currentFrameIndex += 1;
             } else {
-                this.currentFrameIndex = Math.min(this.currentFrameIndex + 1, anim.frames.length - 1);
+                this.#finished = true;
             }
         }
+
+        return this;
     }
 
     draw(ctx, x, y, options = {}) {
@@ -48,20 +67,16 @@ export class BeeAnimatedSprite {
         const width = options.width || this.sheet.frameWidth;
         const height = options.height || this.sheet.frameHeight;
 
-        ctx.save(); // 1. Salva lo stato normale del canvas
+        ctx.save();
 
         if (this.flipX) {
-            // 2. Sposta l'origine al bordo destro dell'immagine e specchia l'asse X
             ctx.translate(x + width, y);
             ctx.scale(-1, 1);
-
-            // 3. Disegna a coordinate (0, 0) perché l'origine è già stata spostata
             this.sheet.drawFrame(ctx, frameToDraw, 0, 0, width, height);
         } else {
-            // Disegno normale senza specchio
             this.sheet.drawFrame(ctx, frameToDraw, x, y, width, height);
         }
 
-        ctx.restore(); // 4. Ripristina lo stato per le altre entità
+        ctx.restore();
     }
 }

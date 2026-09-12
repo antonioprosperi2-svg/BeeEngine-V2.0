@@ -25,6 +25,7 @@ export class BeePlayer extends BeeEntity {
         this.score = 0;
         this.lives = 3;
         this.mode = 'platformer'; // 'platformer' or 'free'
+        this.wantsAttack = false;
         this._boost = new BeeTimer({
             duration: 0,
             onComplete: () => {
@@ -94,6 +95,10 @@ export class BeePlayer extends BeeEntity {
         this.vx = 0;
         if (input.isPressed("ArrowRight") || input.isPressed("KeyD")) this.vx = this.speed;
         if (input.isPressed("ArrowLeft") || input.isPressed("KeyA")) this.vx = -this.speed;
+
+        if (this.animator && (input.wasPressed('KeyX') || input.wasPressed('KeyJ'))) {
+            this.wantsAttack = true;
+        }
 
         if (this.mode === 'platformer') {
             if (input.wasPressed("Space") || input.wasPressed("ArrowUp") || input.wasPressed("KeyW")) {

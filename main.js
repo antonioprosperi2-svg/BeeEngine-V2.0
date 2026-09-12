@@ -1,89 +1,138 @@
-import { BeeEngine } from './BeeEngine.js';
+import { BeeEngine, BeeEntity, BeeAnimatedSprite } from './BeeEngine.js';
 
 const gioco = new BeeEngine('testCanvas', 800, 600);
 gioco.enableAutoResize(800, 600, 100);
 window.gioco = gioco;
 
-let gameTicks = 0;
-let hudTicks = 0;
-let shots = 0;
-let lastOneShot = '—';
+const CLIP_COLOR = {
+    0: '#6b7280',
+    1: '#9ca3af',
+    2: '#f0a202',
+    3: '#f5b942',
+    4: '#e09b00',
+    5: '#ffcc66',
+    6: '#4a90e2',
+    7: '#ef4444',
+    8: '#dc2626',
+    9: '#b91c1c'
+};
 
-const gameBeat = gioco.every(1, () => {
-    gameTicks += 1;
-}, { unscaled: false });
+const sheet = {
+    frameWidth: 64,
+    frameHeight: 64,
+    drawFrame(ctx, frameIndex, x, y, w, h) {
+        ctx.fillStyle = CLIP_COLOR[frameIndex] || '#888';
+        ctx.fillRect(x, y, w, h);
+        ctx.strokeStyle = '#111';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(x, y, w, h);
+        ctx.fillStyle = '#111';
+        ctx.font = 'bold 16px monospace';
+        ctx.fillText(String(frameIndex), x + 8, y + 22);
+    }
+};
 
-const hudBeat = gioco.every(1, () => {
-    hudTicks += 1;
-}, { unscaled: true });
+const sprite = new BeeAnimatedSprite(sheet, {
+    animation: 'idle',
+    animations: {
+        idle: { frames: [0, 1], fps: 4, loop: true },
+        run: { frames: [2, 3, 4, 5], fps: 10, loop: true },
+        jump: { frames: [6], fps: 8, loop: false },
+        attack: { frames: [7, 8, 9], fps: 12, loop: false }
+    }
+});
+
+class Actor extends BeeEntity {
+    constructor() {
+        super(368, 268, 64, 64);
+        this.grounded = true;
+        this.wantsAttack = false;
+        this.airTime = 0;
+        this.sprite = sprite;
+        this.animator = gioco.createAnimator(sprite)
+            .add('idle', { clip: 'idle', initial: true })
+            .add('run', { clip: 'run', priority: 1 })
+            .add('jump', { clip: 'jump', loop: false, priority: 2 })
+            .add('attack', {
+                clip: 'attack',
+                loop: false,
+                lock: true,
+                priority: 10,
+                exitTo: 'idle',
+                onEnter: () => { this.wantsAttack = false; }
+            })
+            .when('idle', 'run', (actor) => actor.grounded && Math.abs(actor.vx) > 1)
+            .when('run', 'idle', (actor) => actor.grounded && Math.abs(actor.vx) <= 1)
+            .when(['idle', 'run'], 'jump', (actor) => !actor.grounded)
+            .when('jump', 'idle', (actor) => actor.grounded && Math.abs(actor.vx) <= 1)
+            .when('jump', 'run', (actor) => actor.grounded && Math.abs(actor.vx) > 1)
+            .when('*', 'attack', (actor) => actor.wantsAttack)
+            .start();
+    }
+
+    update(dt, input, engine) {
+        this.vx = 0;
+        if (input) {
+            if (input.isPressed('ArrowRight') || input.isPressed('KeyD')) this.vx = 180;
+            if (input.isPressed('ArrowLeft') || input.isPressed('KeyA')) this.vx = -180;
+            if (this.grounded && (input.wasPressed('Space') || input.wasPressed('ArrowUp') || input.wasPressed('KeyW'))) {
+                this.grounded = false;
+                this.airTime = 0.45;
+            }
+            if (input.wasPressed('KeyX') || input.wasPressed('KeyJ')) {
+                this.wantsAttack = true;
+            }
+        }
+
+        if (!this.grounded) {
+            this.airTime -= dt;
+            if (this.airTime <= 0) {
+                this.grounded = true;
+                this.airTime = 0;
+            }
+        }
+
+        super.update(dt, input, engine);
+        if (this.sprite) this.sprite.flipX = this.vx < 0;
+    }
+
+    draw(ctx) {
+        if (this.sprite) {
+            this.sprite.draw(ctx, this.worldX, this.worldY, { width: this.width, height: this.height });
+        }
+    }
+}
+
+const hero = new Actor();
 
 const scene = {
-    entities: [],
+    entities: [hero],
 
     draw(ctx) {
         ctx.fillStyle = '#0d1020';
         ctx.fillRect(0, 0, 800, 600);
 
+        ctx.fillStyle = '#1a1f33';
+        ctx.fillRect(0, 360, 800, 8);
+
         ctx.fillStyle = '#ffe08a';
         ctx.font = 'bold 20px monospace';
-        ctx.fillText('BeeTimer — simulazione vs HUD', 24, 36);
+        ctx.fillText('BeeAnimator — idle → run → jump, lock attacco', 24, 36);
         ctx.font = '14px monospace';
         ctx.fillStyle = '#c8c8c8';
         ctx.fillText(
-            `clock ${gioco.timers.size}   game beats ${gameTicks}   HUD beats ${hudTicks}   one-shot ${lastOneShot}`,
+            `stato ${hero.animator.current}   lock ${hero.animator.locked ? 'sì' : 'no'}   clip ${sprite.clip}   frame ${sprite.currentFrameIndex}`,
             24,
             58
         );
-        ctx.fillText(
-            `Pausa = barra gialla ferma, ciano gira. Click = after(0.8). F2 Ladybug.`,
-            24,
-            80
-        );
-
-        drawBar(ctx, 80, 220, 640, 36, gameBeat.progress, '#f0a202', 'SIM  1s  (dt)');
-        drawBar(ctx, 80, 300, 640, 36, hudBeat.progress, '#00e5ff', 'HUD  1s  (unscaledDt)');
-
-        ctx.fillStyle = gioco.time.paused ? '#ffd700' : '#7ad17a';
-        ctx.font = 'bold 18px monospace';
-        ctx.fillText(gioco.time.paused ? 'PAUSA' : 'RUN', 80, 180);
-        ctx.font = '14px monospace';
-        ctx.fillStyle = '#c8c8c8';
-        ctx.fillText(
-            `${gioco.time.timeScale.toFixed(2)}x   game ${gioco.time.elapsed.toFixed(1)}s   real ${gioco.time.unscaledElapsed.toFixed(1)}s   shots ${shots}`,
-            180,
-            180
-        );
+        ctx.fillText('A/D o frecce = corri. Spazio = salto. X o J = attacco (non interrompibile). F2 Ladybug.', 24, 80);
     }
 };
 
-function drawBar(ctx, x, y, width, height, progress, color, label) {
-    ctx.save();
-    ctx.fillStyle = '#1a1f33';
-    ctx.fillRect(x, y, width, height);
-    ctx.fillStyle = color;
-    ctx.fillRect(x, y, width * progress, height);
-    ctx.strokeStyle = '#111';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(x, y, width, height);
-    ctx.fillStyle = '#e2e8f0';
-    ctx.font = '14px monospace';
-    ctx.fillText(label, x, y - 8);
-    ctx.restore();
-}
-
-gioco.scenes.add('timer', scene);
-gioco.scenes.change('timer');
+gioco.scenes.add('animator', scene);
+gioco.scenes.change('animator');
 gioco.enableLadybug();
 gioco.start();
-
-gioco.canvas.addEventListener('pointerdown', (event) => {
-    const pos = gioco.input.getCanvasPosition(event.clientX, event.clientY);
-    lastOneShot = '…';
-    gioco.after(0.8, () => {
-        shots += 1;
-        lastOneShot = `${Math.round(pos.x)},${Math.round(pos.y)}`;
-    });
-});
 
 function bindControls() {
     const pauseBtn = document.getElementById('btnPause');

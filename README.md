@@ -10,7 +10,7 @@ La versione 2.7 rifà **BeeTimer**: `start` / `pause` / `resume` / `cancel`, `gi
 BeeEngine-V2.7/
 ├── index.html                  # Punto di ingresso HTML e configurazione Canvas
 ├── index.js                    # Barrel ESM (re-export di BeeEngine.js)
-├── main.js                     # Demo visiva (BeeTimer: simulazione vs HUD)
+├── main.js                     # Demo visiva (BeeAnimator: idle / run / jump / attack)
 ├── BeeEngine.js                # Il CUORE del motore (Core Loop & System Coordinator)
 ├── README.md                   # Documentazione ufficiale e specifiche tecniche
 ├── package.json                # Manifest di configurazione per la pubblicazione NPM
@@ -22,7 +22,7 @@ BeeEngine-V2.7/
 └── src/
     ├── core/                   # BeePool, BeeTransform, BeeTime, BeeEntity, BeeTimer, scene, asset, save, grid
     ├── gameplay/               # Player, enemy, platform, collectible, menu
-    ├── graphics/               # Camera, sprite, tilemap, text, particles
+    ├── graphics/               # BeeAnimator, camera, sprite, tilemap, text, particles
     ├── input/                  # Tastiera, mouse, joystick, touch, button
     ├── physics/                # BeeSpatialHash, BeePhysicsWorld, BeeRigidBody, AABB groups
     └── debug/                  # BeeLadybug: overlay e hitbox
@@ -91,6 +91,42 @@ hud.cancel();
 | `cancel()` | spegne e toglie dal clock |
 
 One-shot: lo stato `finished` si imposta **prima** della callback. Loop: catch-up (max 8 fire a hitch), `duration <= 0` è errore. `BeeEnemyShooter.fire` e il boost temporaneo del player usano questa classe.
+
+## 🎬 BeeAnimator — il grafo, non il clip
+
+`BeeAnimatedSprite` riproduce un clip. `BeeAnimator` decide **quale** e **quando**: idle → run → jump, priorità, lock del colpo. Lo sprite resta il renderer. `entity.animator` viene tickato nel loop entity (dt di simulazione: in pausa il clip si ferma).
+
+```javascript
+const sprite = gioco.createAnimatedSprite(sheet, {
+    animations: {
+        idle: { frames: [0, 1], fps: 4, loop: true },
+        run: { frames: [2, 3, 4, 5], fps: 10, loop: true },
+        attack: { frames: [6, 7, 8], fps: 12, loop: false }
+    }
+});
+
+const animator = gioco.createAnimator(sprite);
+animator
+    .add('idle', { clip: 'idle', initial: true })
+    .add('run', { clip: 'run', priority: 1 })
+    .add('attack', { clip: 'attack', loop: false, lock: true, priority: 10, exitTo: 'idle' })
+    .when('idle', 'run', (actor) => Math.abs(actor.vx) > 1)
+    .when('run', 'idle', (actor) => Math.abs(actor.vx) <= 1)
+    .when('*', 'attack', (actor) => actor.wantsAttack)
+    .start();
+
+actor.sprite = sprite;
+actor.animator = animator;
+```
+
+| Contratto | Significato |
+| --- | --- |
+| `lock` | finché il clip non è `finished`, gli stati con priorità ≤ non interrompono (vanno in coda) |
+| `exitTo` | dove andare a clip finito (one-shot / lock) |
+| `when('*', to, pred)` | da qualsiasi stato |
+| `play(name, { force })` | richiesta manuale; `force` rompe il lock |
+
+`BeeAnimatedSprite.play(name, { restart: true })` e `sprite.finished` esistono perché l'animator deve sapere quando l'attacco è chiuso. Versione pacchetto resta **2.7.0**: Animator entra nel prossimo 2.8 insieme ad altre fondamenta.
 
 ## 🎬 BeeSceneManager — replace, non stack
 

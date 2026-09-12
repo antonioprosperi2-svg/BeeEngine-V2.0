@@ -28,6 +28,7 @@ import { BeeButton } from './src/input/BeeButton.js';
 import { BeeSprite } from './src/graphics/BeeSprite.js';
 import { BeeSpriteSheet } from './src/graphics/BeeSpriteSheet.js';
 import { BeeAnimatedSprite } from './src/graphics/BeeAnimatedSprite.js';
+import { BeeAnimator, BEE_ANIMATOR_DEFAULTS } from './src/graphics/BeeAnimator.js';
 import { BeeCamera } from './src/graphics/BeeCamera.js';
 import { BeeParticleSystem } from './src/graphics/BeeParticleSystem.js';
 import { BeeTilemap } from './src/graphics/BeeTilemap.js';
@@ -130,6 +131,10 @@ export class BeeEngine {
 
     createAnimatedSprite(spriteSheet, config = {}) {
         return new BeeAnimatedSprite(spriteSheet, config);
+    }
+
+    createAnimator(sprite, options = {}) {
+        return new BeeAnimator(sprite, options);
     }
 
     enableAutoResize(baseWidth = this.canvas.width, baseHeight = this.canvas.height, reservedHeight = 0) {
@@ -543,6 +548,7 @@ export {
     BEE_LAYER,
     BEE_SPATIAL_HASH_DEFAULTS,
     BEE_POOL_DEFAULTS,
+    BEE_ANIMATOR_DEFAULTS,
     BeeTime,
     BeeTransform,
     BeeLadybug,
@@ -578,6 +584,7 @@ export {
     BeePool,
     BeeSpriteSheet,
     BeeAnimatedSprite,
+    BeeAnimator,
     BeeTilemapLoader,
     BeeJoystick,
     BeeTouchButton,

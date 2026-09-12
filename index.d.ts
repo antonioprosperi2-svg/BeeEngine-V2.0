@@ -213,6 +213,8 @@ export declare class BeeEntity {
   collider: BeeRectCollider | null;
   body: BeeRigidBody | null;
   pool: BeePool | null;
+  animator: BeeAnimator | null;
+  animatorContext?: () => unknown;
   readonly children: BeeEntity[];
 
   constructor(
@@ -604,6 +606,7 @@ export declare class BeePlayer extends BeeEntity {
   score: number;
   lives: number;
   mode: BeePlayerMode;
+  wantsAttack: boolean;
 
   constructor(
     x?: number,
@@ -1189,6 +1192,8 @@ export declare class BeeAnimatedSprite {
   currentFrameIndex: number;
   timer: number;
   flipX: boolean;
+  readonly finished: boolean;
+  readonly clip: string;
 
   constructor(
     spriteSheet: BeeSpriteSheet,
@@ -1198,9 +1203,56 @@ export declare class BeeAnimatedSprite {
     }
   );
 
-  play(name: string): void;
-  update(dt: number): void;
+  play(name: string, options?: { restart?: boolean }): this;
+  update(dt: number): this;
   draw(ctx: CanvasRenderingContext2D, x: number, y: number, options?: { width?: number; height?: number }): void;
+}
+
+export declare const BEE_ANIMATOR_DEFAULTS: Readonly<{
+  priority: number;
+  lock: boolean;
+  loop: boolean;
+}>;
+
+export interface BeeAnimatorStateOptions {
+  clip?: string;
+  animation?: string;
+  loop?: boolean;
+  lock?: boolean;
+  priority?: number;
+  exitTo?: string | null;
+  initial?: boolean;
+  onEnter?: (animator: BeeAnimator, previous: { name: string } | null) => void;
+  onExit?: (animator: BeeAnimator, next: { name: string }) => void;
+  onComplete?: (animator: BeeAnimator, context: unknown) => void;
+}
+
+export type BeeAnimatorPredicate = (context: any, animator: BeeAnimator) => boolean;
+
+export declare class BeeAnimator {
+  sprite: { play?: Function; update?: Function; finished?: boolean } | null;
+  context: (() => unknown) | null;
+  readonly current: string | null;
+  readonly locked: boolean;
+  readonly queued: string | null;
+  readonly timeInState: number;
+
+  constructor(sprite?: BeeAnimator["sprite"], options?: { context?: () => unknown });
+
+  add(name: string, spec?: BeeAnimatorStateOptions): this;
+  when(
+    from: string | string[],
+    to: string,
+    predicate: BeeAnimatorPredicate,
+    options?: { priority?: number }
+  ): this;
+  from(from: string | string[]): {
+    to: (to: string, predicate: BeeAnimatorPredicate, options?: { priority?: number }) => BeeAnimator;
+  };
+  start(name?: string): this;
+  play(name: string, options?: { restart?: boolean; force?: boolean }): this;
+  set(name: string, options?: { restart?: boolean; force?: boolean }): this;
+  update(dt: number, context?: unknown): this;
 }
 
 export declare class BeeTilemapLoader {
@@ -1379,6 +1431,11 @@ export declare class BeeEngine {
     spriteSheet: BeeSpriteSheet,
     config?: object
   ): BeeAnimatedSprite;
+
+  createAnimator(
+    sprite?: BeeAnimator["sprite"],
+    options?: { context?: () => unknown }
+  ): BeeAnimator;
 
   start(
     updateCallback?: BeeGameLoopCallback,

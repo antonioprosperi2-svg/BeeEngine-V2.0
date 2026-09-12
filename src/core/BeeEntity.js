@@ -83,6 +83,7 @@ export class BeeEntity {
         this.collider = null;
         this.body = null;
         this.pool = null;
+        this.animator = null;
         this.#torn = false;
     }
 
@@ -331,6 +332,13 @@ export class BeeEntity {
         if (this.destroyed || !this.active) return;
 
         this.integrate(dt);
+
+        if (this.animator && typeof this.animator.update === 'function') {
+            const ctx = typeof this.animatorContext === 'function'
+                ? this.animatorContext()
+                : this;
+            this.animator.update(dt, ctx);
+        }
 
         const kids = this.#children;
         for (let i = 0; i < kids.length; ) {
