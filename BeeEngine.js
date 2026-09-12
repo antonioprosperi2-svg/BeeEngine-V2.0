@@ -7,7 +7,7 @@ import { BeeTransform, BEE_TRANSFORM_DEFAULTS } from './src/core/BeeTransform.js
 import { BeeTime, BEE_TIME_DEFAULTS } from './src/core/BeeTime.js';
 import { BeeSceneManager } from './src/core/BeeSceneManager.js';
 import { BeeSave, BeeSaveStore, BEE_SAVE_DEFAULTS, BEE_SAVE_STATUS } from './src/core/BeeSave.js';
-import { BeeTimer } from './src/core/BeeTimer.js';
+import { BeeTimer, BeeTimerClock, BEE_TIMER_DEFAULTS } from './src/core/BeeTimer.js';
 import { BeeGrid } from './src/core/BeeGrid.js';
 import { BeePool, BEE_POOL_DEFAULTS } from './src/core/BeePool.js';
 import { BeeLadybug, BEE_LADYBUG_DEFAULTS } from './src/debug/BeeLadybug.js';
@@ -91,6 +91,7 @@ export class BeeEngine {
             max: 256
         });
         this.time = new BeeTime();
+        this.timers = new BeeTimerClock();
         this.save = new BeeSaveStore();
         this.debug = new BeeLadybug(this);
         this.debug.attach();
@@ -211,6 +212,25 @@ export class BeeEngine {
         return this;
     }
 
+    after(duration, onComplete, options = {}) {
+        return this.timers.create({
+            ...options,
+            duration,
+            onComplete,
+            autoStart: true
+        });
+    }
+
+    every(duration, onComplete, options = {}) {
+        return this.timers.create({
+            ...options,
+            duration,
+            onComplete,
+            loop: true,
+            autoStart: true
+        });
+    }
+
     enableLadybug(options = {}) {
         this.debug.configure(options).attach().show();
         return this.debug;
@@ -245,6 +265,7 @@ export class BeeEngine {
         if (this.debug && typeof this.debug.destroy === 'function') {
             this.debug.destroy();
         }
+        if (this.timers) this.timers.clear();
         if (this.physics) this.physics.clear();
         if (this.pools) {
             for (const pool of this.pools.values()) {
@@ -301,6 +322,7 @@ export class BeeEngine {
         if (!this.isRunning) return;
 
         this.time.tick(timestamp);
+        this.timers.tick(this.time);
         const dt = this.time.dt;
 
         if (!this.time.paused) {
@@ -510,6 +532,7 @@ export {
     BEE_ENTITY_DEFAULTS,
     BEE_TRANSFORM_DEFAULTS,
     BEE_TIME_DEFAULTS,
+    BEE_TIMER_DEFAULTS,
     BEE_SAVE_DEFAULTS,
     BEE_SAVE_STATUS,
     BEE_LADYBUG_DEFAULTS,
@@ -531,6 +554,7 @@ export {
     BeeButton,
     BeeText,
     BeeTimer,
+    BeeTimerClock,
     BeeRectCollider,
     BeeAssetManager,
     BeeMenuScene,

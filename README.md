@@ -1,16 +1,16 @@
 ![BeeEngine](https://raw.githubusercontent.com/antonioprosperi2-svg/BeeEngine-V2.0/main/Gemini_Generated_Image_pz9goopz9goopz9g.jpg)
-# 🐝 Motore di gioco 2D BeeEngine (v2.6.0 Professional)
+# 🐝 Motore di gioco 2D BeeEngine (v2.7.0 Professional)
 
 BeeEngine è un motore di gioco 2D leggero, modulare e altamente ottimizzato scritto in puro JavaScript moderno (ES Modules) per HTML5 Canvas.
-La versione 2.6 introduce **BeePool**: prealloca bullet e particelle, `acquire`/`release`, niente `new` a ogni sparo. Dalla 2.5: Transform, Save, fisica, SceneManager, SpatialHash.
+La versione 2.7 rifà **BeeTimer**: `start` / `pause` / `resume` / `cancel`, `gioco.timers` ticka ogni frame. Dalla 2.6: Pool. Dalla 2.5: Transform, Save, fisica, SceneManager, SpatialHash.
 
 ## 📁 Struttura del Progetto Aggiornata
 
 ```text
-BeeEngine-V2.6/
+BeeEngine-V2.7/
 ├── index.html                  # Punto di ingresso HTML e configurazione Canvas
 ├── index.js                    # Barrel ESM (re-export di BeeEngine.js)
-├── main.js                     # Demo visiva (BeePool: sparo + particelle)
+├── main.js                     # Demo visiva (BeeTimer: simulazione vs HUD)
 ├── BeeEngine.js                # Il CUORE del motore (Core Loop & System Coordinator)
 ├── README.md                   # Documentazione ufficiale e specifiche tecniche
 ├── package.json                # Manifest di configurazione per la pubblicazione NPM
@@ -52,10 +52,7 @@ gioco.resume();
 gioco.setTimeScale(0.25);   // slow-motion
 gioco.time.togglePause();
 
-// Timer immune a pausa/slow-mo (barra UI, fade)
-const hudTick = new BeeTimer(1, () => {}, true, { useUnscaledTime: true });
-hudTick.start();
-hudTick.update(gioco.time);
+const hudTick = gioco.every(1, () => {}, { unscaled: true });
 ```
 
 ### API essenziale
@@ -66,9 +63,34 @@ hudTick.update(gioco.time);
 * `gioco.time.begin()` — allinea il timestamp senza azzerare elapsed (start / ripartenza dopo `stop`).
 * `gioco.time.fps` — stima su finestra 0.5 s di tempo reale.
 * `gioco.time.consumeFixedSteps(fn)` — il loop lo chiama verso `physics.step` (passo 1/60, max 5). Le entity senza `body` restano a dt variabile.
-* `BeeTimer(..., { useUnscaledTime: true })` — cooldown sul tempo reale; va aggiornato nel callback `engine.update` se deve vivere in pausa (`scene.update` in freeze non parte).
+* `gioco.after` / `gioco.every` — timer sul clock del motore (vedi BeeTimer).
 
 Demo visiva: apri `index.html` (via `main.js`). **F2** apre BeeLadybug.
+
+## ⏱ BeeTimer (v2.7.0) — cooldown, non un number a mano
+
+`BeeTime` è l'orologio. `BeeTimer` è l'evento: spawn, cooldown, durata bonus, tick HUD.
+
+`gioco.timers` viene tickato **ogni frame**, anche in pausa. Un timer scalato prende `dt` (si ferma). Uno `unscaled` prende `unscaledDt` (vive). Non passare `dt` e sperare che il flag faccia magie: un numero è uno step esplicito.
+
+```javascript
+const ricarica = gioco.after(1.5, () => arma.ready = true);
+const hud = gioco.every(1, () => blink = !blink, { unscaled: true });
+
+ricarica.pause();
+ricarica.resume();
+hud.cancel();
+```
+
+| Metodo | Contratto |
+| --- | --- |
+| `start()` | azzera e parte |
+| `pause()` / `stop()` | ferma, tiene `elapsed` |
+| `resume()` | riparte senza azzerare |
+| `reset()` | azzera il clock, non cambia running |
+| `cancel()` | spegne e toglie dal clock |
+
+One-shot: lo stato `finished` si imposta **prima** della callback. Loop: catch-up (max 8 fire a hitch), `duration <= 0` è errore. `BeeEnemyShooter.fire` e il boost temporaneo del player usano questa classe.
 
 ## 🎬 BeeSceneManager — replace, non stack
 

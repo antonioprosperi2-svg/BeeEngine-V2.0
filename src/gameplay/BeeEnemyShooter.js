@@ -1,5 +1,6 @@
 import { BeeEnemy } from './BeeEnemy.js';
 import { BeeBullet } from '../physics/BeeBullet.js';
+import { BeeTimer } from '../core/BeeTimer.js';
 
 /**
  * BeeEnemyShooter: Advanced enemy capable of multi-directional movement and shooting projectiles.
@@ -11,11 +12,33 @@ export class BeeEnemyShooter extends BeeEnemy {
         this.vx = 80;
         this.vy = 60;
         this.shootInterval = 1.5;
-        this.shootTimer = this.shootInterval;
         this.bulletSpeed = 250;
+        this.engine = null;
+        this.fire = new BeeTimer({
+            duration: this.shootInterval,
+            loop: true,
+            onComplete: () => {
+                if (this.active && !this.destroyed && this.engine) {
+                    this.shoot(this.engine);
+                }
+            }
+        });
+        this.fire.start();
+    }
+
+    get shootTimer() {
+        return this.fire ? this.fire.remaining : 0;
     }
 
     update(dt, input, engine) {
+        this.engine = engine || this.engine;
+        this.fire.duration = this.shootInterval;
+        if (engine && engine.time) {
+            this.fire.update(engine.time);
+        } else {
+            this.fire.update(dt);
+        }
+
         super.update(dt, input, engine);
 
         if (engine && engine.canvas) {
@@ -29,12 +52,11 @@ export class BeeEnemyShooter extends BeeEnemy {
                 this.vy = -this.vy;
             }
         }
+    }
 
-        this.shootTimer -= dt;
-        if (this.shootTimer <= 0) {
-            this.shootTimer = this.shootInterval;
-            this.shoot(engine);
-        }
+    destroy() {
+        if (this.fire) this.fire.cancel();
+        super.destroy();
     }
 
     shoot(engine) {

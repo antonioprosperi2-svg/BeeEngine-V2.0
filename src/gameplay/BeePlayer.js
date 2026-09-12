@@ -1,4 +1,5 @@
 import { BeeEntity } from '../core/BeeEntity.js';
+import { BeeTimer } from '../core/BeeTimer.js';
 
 /**
  * BeePlayer: Base playable character entity for 2D platformer and arcade games.
@@ -24,7 +25,12 @@ export class BeePlayer extends BeeEntity {
         this.score = 0;
         this.lives = 3;
         this.mode = 'platformer'; // 'platformer' or 'free'
-        this._jumpBoostRemaining = 0;
+        this._boost = new BeeTimer({
+            duration: 0,
+            onComplete: () => {
+                this.jumpForce = this.baseJumpForce;
+            }
+        });
     }
 
     jump() {
@@ -56,7 +62,8 @@ export class BeePlayer extends BeeEntity {
      */
     boostJumpTemporary(amount, durationMs) {
         this.boostJump(amount);
-        this._jumpBoostRemaining = Math.max(0, durationMs) / 1000;
+        this._boost.duration = Math.max(0, durationMs) / 1000;
+        this._boost.start();
     }
 
     /**
@@ -78,12 +85,10 @@ export class BeePlayer extends BeeEntity {
     update(dt, input, engine) {
         if (!input) return;
 
-        if (this._jumpBoostRemaining > 0) {
-            this._jumpBoostRemaining -= dt;
-            if (this._jumpBoostRemaining <= 0) {
-                this._jumpBoostRemaining = 0;
-                this.jumpForce = this.baseJumpForce;
-            }
+        if (engine && engine.time) {
+            this._boost.update(engine.time);
+        } else {
+            this._boost.update(dt);
         }
 
         this.vx = 0;
@@ -125,5 +130,10 @@ export class BeePlayer extends BeeEntity {
         ctx.lineWidth = 2;
         ctx.strokeRect(this.worldX, this.worldY, this.width, this.height);
         ctx.restore();
+    }
+
+    destroy() {
+        if (this._boost) this._boost.cancel();
+        super.destroy();
     }
 }

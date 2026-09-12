@@ -623,6 +623,7 @@ export declare class BeePlayer extends BeeEntity {
 
   update(dt: number, input: BeeInput, engine?: BeeEngine): void;
   draw(ctx: CanvasRenderingContext2D, engine?: BeeEngine): void;
+  destroy(): void;
 }
 
 export declare class BeeEnemy extends BeeEntity {
@@ -648,8 +649,9 @@ export type BeeNemico = BeeEnemy;
 
 export declare class BeeEnemyShooter extends BeeEnemy {
   shootInterval: number;
-  shootTimer: number;
+  readonly shootTimer: number;
   bulletSpeed: number;
+  fire: BeeTimer;
 
   constructor(
     x: number,
@@ -662,6 +664,7 @@ export declare class BeeEnemyShooter extends BeeEnemy {
   update(dt: number, input: BeeInput, engine: BeeEngine): void;
   shoot(engine: BeeEngine): void;
   draw(ctx: CanvasRenderingContext2D, engine?: BeeEngine): void;
+  destroy(): void;
 }
 
 export declare class BeeBullet extends BeeEntity {
@@ -907,27 +910,71 @@ export declare class BeeGrid {
   ): void;
 }
 
+export type BeeTimerCallback = (timer: BeeTimer) => void;
+
+export interface BeeTimerOptions {
+  duration?: number;
+  onComplete?: BeeTimerCallback | null;
+  callback?: BeeTimerCallback | null;
+  loop?: boolean;
+  unscaled?: boolean;
+  useUnscaledTime?: boolean;
+  autoStart?: boolean;
+  maxCatchUp?: number;
+  clock?: BeeTimerClock | null;
+}
+
+export declare const BEE_TIMER_DEFAULTS: Readonly<{
+  duration: number;
+  loop: boolean;
+  unscaled: boolean;
+  autoStart: boolean;
+  maxCatchUp: number;
+}>;
+
 export declare class BeeTimer {
   duration: number;
-  callback: (() => void) | null;
+  onComplete: BeeTimerCallback | null;
+  callback: BeeTimerCallback | null;
   loop: boolean;
+  unscaled: boolean;
   useUnscaledTime: boolean;
+  maxCatchUp: number;
+  elapsed: number;
+  /** @deprecated usa elapsed */
   time: number;
   running: boolean;
   finished: boolean;
+  cancelled: boolean;
+  clock: BeeTimerClock | null;
+  readonly paused: boolean;
+  readonly remaining: number;
   readonly progress: number;
 
   constructor(
-    duration: number,
-    callback?: (() => void) | null,
+    durationOrOptions?: number | BeeTimerOptions,
+    onComplete?: BeeTimerCallback | null,
     loop?: boolean,
-    options?: { useUnscaledTime?: boolean }
+    options?: Omit<BeeTimerOptions, "duration" | "onComplete" | "loop">
   );
 
   start(): this;
+  pause(): this;
+  resume(): this;
   stop(): this;
   reset(): this;
-  update(dtOrTime: number | BeeTime, time?: BeeTime | null): void;
+  cancel(): this;
+  update(dtOrTime: number | BeeTime | { dt?: number; unscaledDt?: number }): this;
+}
+
+export declare class BeeTimerClock {
+  readonly size: number;
+
+  add(timer: BeeTimer): BeeTimer;
+  create(options?: BeeTimerOptions): BeeTimer;
+  remove(timer: BeeTimer): this;
+  tick(time: BeeTime): this;
+  clear(): this;
 }
 
 export interface BeeTimeOptions {
@@ -1279,6 +1326,7 @@ export declare class BeeEngine {
   pools: Map<string, BeePool>;
   bullets: BeePool<BeeBullet> | null;
   time: BeeTime;
+  timers: BeeTimerClock;
   save: BeeSaveStore;
   debug: BeeLadybug;
   lastTime: number;
@@ -1307,6 +1355,8 @@ export declare class BeeEngine {
   pause(): this;
   resume(): this;
   setTimeScale(scale: number): this;
+  after(duration: number, onComplete?: BeeTimerCallback | null, options?: BeeTimerOptions): BeeTimer;
+  every(duration: number, onComplete?: BeeTimerCallback | null, options?: BeeTimerOptions): BeeTimer;
   stop(): void;
   destroy(): void;
 

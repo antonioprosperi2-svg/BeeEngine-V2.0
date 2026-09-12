@@ -1,65 +1,87 @@
-import {
-    BeeEngine,
-    BeeEnemyShooter,
-    BeeParticleSystem
-} from './BeeEngine.js';
+import { BeeEngine } from './BeeEngine.js';
 
 const gioco = new BeeEngine('testCanvas', 800, 600);
 gioco.enableAutoResize(800, 600, 100);
 window.gioco = gioco;
 
-const turret = new BeeEnemyShooter(380, 80, 44, 44);
-turret.vx = 140;
-turret.vy = 0;
-turret.shootInterval = 0.12;
-turret.bulletSpeed = 420;
+let gameTicks = 0;
+let hudTicks = 0;
+let shots = 0;
+let lastOneShot = '—';
 
-const sparks = new BeeParticleSystem({ x: 400, y: 300, initial: 96, max: 384 });
+const gameBeat = gioco.every(1, () => {
+    gameTicks += 1;
+}, { unscaled: false });
+
+const hudBeat = gioco.every(1, () => {
+    hudTicks += 1;
+}, { unscaled: true });
 
 const scene = {
-    entities: [turret, sparks],
+    entities: [],
 
     draw(ctx) {
         ctx.fillStyle = '#0d1020';
         ctx.fillRect(0, 0, 800, 600);
 
-        const bullets = gioco.bullets;
         ctx.fillStyle = '#ffe08a';
         ctx.font = 'bold 20px monospace';
-        ctx.fillText('BeePool — spawn / release, niente new a ogni sparo', 24, 36);
+        ctx.fillText('BeeTimer — simulazione vs HUD', 24, 36);
         ctx.font = '14px monospace';
         ctx.fillStyle = '#c8c8c8';
         ctx.fillText(
-            `Bullets  inUse ${bullets.inUse}   free ${bullets.available}   size ${bullets.size}/${bullets.max}`,
+            `clock ${gioco.timers.size}   game beats ${gameTicks}   HUD beats ${hudTicks}   one-shot ${lastOneShot}`,
             24,
             58
         );
         ctx.fillText(
-            `Sparks   live ${sparks.particles.length}   free ${sparks.particlePool.available}   size ${sparks.particlePool.size}/${sparks.particlePool.max}`,
+            `Pausa = barra gialla ferma, ciano gira. Click = after(0.8). F2 Ladybug.`,
             24,
             80
         );
-        ctx.fillText('Click = burst particelle. F2 Ladybug.', 24, 102);
+
+        drawBar(ctx, 80, 220, 640, 36, gameBeat.progress, '#f0a202', 'SIM  1s  (dt)');
+        drawBar(ctx, 80, 300, 640, 36, hudBeat.progress, '#00e5ff', 'HUD  1s  (unscaledDt)');
+
+        ctx.fillStyle = gioco.time.paused ? '#ffd700' : '#7ad17a';
+        ctx.font = 'bold 18px monospace';
+        ctx.fillText(gioco.time.paused ? 'PAUSA' : 'RUN', 80, 180);
+        ctx.font = '14px monospace';
+        ctx.fillStyle = '#c8c8c8';
+        ctx.fillText(
+            `${gioco.time.timeScale.toFixed(2)}x   game ${gioco.time.elapsed.toFixed(1)}s   real ${gioco.time.unscaledElapsed.toFixed(1)}s   shots ${shots}`,
+            180,
+            180
+        );
     }
 };
 
-gioco.scenes.add('pool', scene);
-gioco.scenes.change('pool');
+function drawBar(ctx, x, y, width, height, progress, color, label) {
+    ctx.save();
+    ctx.fillStyle = '#1a1f33';
+    ctx.fillRect(x, y, width, height);
+    ctx.fillStyle = color;
+    ctx.fillRect(x, y, width * progress, height);
+    ctx.strokeStyle = '#111';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x, y, width, height);
+    ctx.fillStyle = '#e2e8f0';
+    ctx.font = '14px monospace';
+    ctx.fillText(label, x, y - 8);
+    ctx.restore();
+}
+
+gioco.scenes.add('timer', scene);
+gioco.scenes.change('timer');
 gioco.enableLadybug();
 gioco.start();
 
 gioco.canvas.addEventListener('pointerdown', (event) => {
     const pos = gioco.input.getCanvasPosition(event.clientX, event.clientY);
-    sparks.x = pos.x;
-    sparks.y = pos.y;
-    sparks.emit(28, {
-        speedMin: 40,
-        speedMax: 220,
-        lifeMin: 0.35,
-        lifeMax: 0.9,
-        sizeMin: 2,
-        sizeMax: 5,
-        color: '#ffcc66'
+    lastOneShot = '…';
+    gioco.after(0.8, () => {
+        shots += 1;
+        lastOneShot = `${Math.round(pos.x)},${Math.round(pos.y)}`;
     });
 });
 
