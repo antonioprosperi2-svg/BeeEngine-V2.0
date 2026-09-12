@@ -212,6 +212,7 @@ export declare class BeeEntity {
   destroyed: boolean;
   collider: BeeRectCollider | null;
   body: BeeRigidBody | null;
+  pool: BeePool | null;
   readonly children: BeeEntity[];
 
   constructor(
@@ -245,6 +246,8 @@ export declare class BeeEntity {
   integrate(dt: number): void;
   update(dt: number, input?: BeeInput, engine?: BeeEngine): void;
   draw(ctx: CanvasRenderingContext2D, engine?: BeeEngine): void;
+  recycle(): void;
+  dispose(): void;
   destroy(): void;
 }
 
@@ -389,6 +392,44 @@ export declare class BeeSpatialHash {
   queryPoint(x: number, y: number, out?: object[]): object[];
   queryRadius(x: number, y: number, radius: number, out?: object[]): object[];
   forEachPair(callback: (a: object, b: object) => void): number;
+}
+
+// ---------------------------------------------------------------------------
+// BeePool
+// ---------------------------------------------------------------------------
+
+export declare const BEE_POOL_DEFAULTS: Readonly<{
+  initial: number;
+  max: number;
+  reclaim: boolean;
+}>;
+
+export interface BeePoolOptions<T = unknown> {
+  create: (...args: any[]) => T;
+  reset?: (item: T, ...args: any[]) => void;
+  dispose?: (item: T) => void;
+  initial?: number;
+  max?: number;
+  reclaim?: boolean;
+}
+
+export declare class BeePool<T = any> {
+  create: (...args: any[]) => T;
+  reset: ((item: T, ...args: any[]) => void) | null;
+  dispose: ((item: T) => void) | null;
+  max: number;
+  reclaim: boolean;
+  readonly available: number;
+  readonly inUse: number;
+  readonly size: number;
+
+  constructor(options: BeePoolOptions<T>);
+
+  prewarm(count: number): this;
+  acquire(...args: any[]): T | null;
+  release(item: T): this;
+  releaseAll(): this;
+  clear(): this;
 }
 
 // ---------------------------------------------------------------------------
@@ -639,6 +680,17 @@ export declare class BeeBullet extends BeeEntity {
     lifespan?: number
   );
 
+  reset(
+    x?: number,
+    y?: number,
+    vx?: number,
+    vy?: number,
+    width?: number,
+    height?: number,
+    textureKey?: string | null,
+    lifespan?: number
+  ): this;
+  recycle(): void;
   update(dt: number, input?: BeeInput, engine?: BeeEngine): void;
   draw(ctx: CanvasRenderingContext2D, engine?: BeeEngine): void;
 }
@@ -805,11 +857,12 @@ export interface BeeParticle {
 
 export declare class BeeParticleSystem extends BeeEntity {
   particles: BeeParticle[];
+  particlePool: BeePool;
 
-  constructor(options?: { x?: number; y?: number });
+  constructor(options?: { x?: number; y?: number; initial?: number; max?: number });
 
   emit(count?: number, options?: BeeParticleEmitOptions): void;
-  update(dt: number, scene?: unknown): void;
+  update(dt: number, input?: BeeInput, engine?: BeeEngine): void;
   draw(ctx: CanvasRenderingContext2D): void;
 }
 
@@ -1223,6 +1276,8 @@ export declare class BeeEngine {
   collisions: BeeCollisionSystem;
   physics: BeePhysicsWorld;
   spatial: BeeSpatialHash;
+  pools: Map<string, BeePool>;
+  bullets: BeePool<BeeBullet> | null;
   time: BeeTime;
   save: BeeSaveStore;
   debug: BeeLadybug;
@@ -1254,6 +1309,10 @@ export declare class BeeEngine {
   setTimeScale(scale: number): this;
   stop(): void;
   destroy(): void;
+
+  createPool<T = any>(name: string, options: BeePoolOptions<T> | BeePool<T>): BeePool<T>;
+  pool<T = any>(name: string): BeePool<T> | null;
+  spawn<T = any>(name: string, ...args: any[]): T | null;
 
   enableJoystick(options?: object): BeeJoystick;
   enableTouchControls(): BeeTouchControls;

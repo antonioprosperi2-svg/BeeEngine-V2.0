@@ -16,11 +16,26 @@ export class BeeBullet extends BeeEntity {
      */
     constructor(x = 0, y = 0, vx = 0, vy = 300, width = 8, height = 8, textureKey = null, lifespan = 5) {
         super(x, y, width, height);
+        this.reset(x, y, vx, vy, width, height, textureKey, lifespan);
+    }
+
+    reset(x = 0, y = 0, vx = 0, vy = 300, width = 8, height = 8, textureKey = null, lifespan = 5) {
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
         this.vx = vx;
         this.vy = vy;
         this.textureKey = textureKey;
         this.lifespan = lifespan;
         this.age = 0;
+        return this;
+    }
+
+    recycle() {
+        this.age = 0;
+        this.vx = 0;
+        this.vy = 0;
     }
 
     update(dt, input, engine) {

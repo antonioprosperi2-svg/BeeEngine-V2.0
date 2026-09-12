@@ -1,16 +1,16 @@
 ![BeeEngine](https://raw.githubusercontent.com/antonioprosperi2-svg/BeeEngine-V2.0/main/Gemini_Generated_Image_pz9goopz9goopz9g.jpg)
-# 🐝 Motore di gioco 2D BeeEngine (v2.5.0 Professional)
+# 🐝 Motore di gioco 2D BeeEngine (v2.6.0 Professional)
 
 BeeEngine è un motore di gioco 2D leggero, modulare e altamente ottimizzato scritto in puro JavaScript moderno (ES Modules) per HTML5 Canvas.
-La versione 2.5 introduce **BeeTransform**: scena grafo affine (posizione, rotazione, scala, pivot), non un `world = parent.x + x`.
+La versione 2.6 introduce **BeePool**: prealloca bullet e particelle, `acquire`/`release`, niente `new` a ogni sparo. Dalla 2.5: Transform, Save, fisica, SceneManager, SpatialHash.
 
 ## 📁 Struttura del Progetto Aggiornata
 
 ```text
-BeeEngine-V2.5/
+BeeEngine-V2.6/
 ├── index.html                  # Punto di ingresso HTML e configurazione Canvas
 ├── index.js                    # Barrel ESM (re-export di BeeEngine.js)
-├── main.js                     # Demo visiva (BeeSpatialHash: stormo + esplosione)
+├── main.js                     # Demo visiva (BeePool: sparo + particelle)
 ├── BeeEngine.js                # Il CUORE del motore (Core Loop & System Coordinator)
 ├── README.md                   # Documentazione ufficiale e specifiche tecniche
 ├── package.json                # Manifest di configurazione per la pubblicazione NPM
@@ -20,7 +20,7 @@ BeeEngine-V2.5/
 │   ├── audio/                  # Effetti sonori (.mp3) e musiche di sottofondo
 │   └── images/                 # Texture dei personaggi (.png), sprite e sfondi
 └── src/
-    ├── core/                   # BeeTransform, BeeTime, BeeEntity, BeeTimer, scene, asset, save, grid
+    ├── core/                   # BeePool, BeeTransform, BeeTime, BeeEntity, BeeTimer, scene, asset, save, grid
     ├── gameplay/               # Player, enemy, platform, collectible, menu
     ├── graphics/               # Camera, sprite, tilemap, text, particles
     ├── input/                  # Tastiera, mouse, joystick, touch, button
@@ -153,6 +153,37 @@ for (let i = 0; i < hits.length; i++) {
 ```
 
 `BeeCollisionSystem` e Ladybug usano lo stesso broadphase. Cella default 64px (`cellSize`).
+
+## ♻️ BeePool (v2.6.0) — spawn/release, non create/destroy
+
+Create/destroy di bullet e particelle è il hitch GC più comune in Canvas. `BeePool` prealloca, `acquire`/`release`, resetta lo stato. Se il pool è pieno, riutilizza il più vecchio ancora in uso (`reclaim`). `entity.destroy()` su un oggetto pooled lo rimette in pila: non smonta transform/body.
+
+`gioco.bullets` è il pool di default (32 prewarm, max 256). `BeeEnemyShooter` lo usa. `BeeParticleSystem` ha un pool interno (`particlePool`) e compatta l'array live senza `filter`.
+
+```javascript
+const colpo = gioco.bullets.acquire(x, y, 0, 280, 10, 10);
+gioco.addEntity(colpo);
+colpo.destroy();   // release, non teardown
+
+const fx = new BeeParticleSystem({ x, y, initial: 64, max: 256 });
+fx.emit(24, { color: '#ffcc66' });
+
+gioco.createPool('spark', {
+    create: () => ({ life: 0 }),
+    reset: (item, life) => { item.life = life; },
+    initial: 16,
+    max: 64,
+    reclaim: false
+});
+```
+
+| Campo | Significato |
+| --- | --- |
+| `available` | oggetti dormienti in pila |
+| `inUse` | oggetti vivi |
+| `size` | available + inUse (non cresce oltre `max`) |
+
+`gioco.spawn('bullet', x, y, vx, vy)` = acquire + `addEntity`.
 
 ## 💾 BeeSave — persistenza DTO, non `setItem` nudo
 

@@ -82,8 +82,11 @@ export class BeeEntity {
         this.destroyed = false;
         this.collider = null;
         this.body = null;
+        this.pool = null;
+        this.#torn = false;
     }
 
+    #torn = false;
     #parent = null;
     #children = [];
 
@@ -351,9 +354,26 @@ export class BeeEntity {
         // intenzionalmente vuoto — single responsibility
     }
 
-    destroy() {
-        if (this.destroyed) return;
+    recycle() {
+        // hook per i pool: reset stato volatile, non teardown
+    }
 
+    dispose() {
+        this.pool = null;
+        this.#teardown();
+    }
+
+    destroy() {
+        if (this.pool) {
+            this.pool.release(this);
+            return;
+        }
+        this.#teardown();
+    }
+
+    #teardown() {
+        if (this.#torn) return;
+        this.#torn = true;
         this.destroyed = true;
         this.active = false;
         this.visible = false;

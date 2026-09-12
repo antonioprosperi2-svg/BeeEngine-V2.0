@@ -9,6 +9,7 @@ import { BeeSceneManager } from './src/core/BeeSceneManager.js';
 import { BeeSave, BeeSaveStore, BEE_SAVE_DEFAULTS, BEE_SAVE_STATUS } from './src/core/BeeSave.js';
 import { BeeTimer } from './src/core/BeeTimer.js';
 import { BeeGrid } from './src/core/BeeGrid.js';
+import { BeePool, BEE_POOL_DEFAULTS } from './src/core/BeePool.js';
 import { BeeLadybug, BEE_LADYBUG_DEFAULTS } from './src/debug/BeeLadybug.js';
 
 // ==========================================
@@ -80,6 +81,15 @@ export class BeeEngine {
         this.collisions = new BeeCollisionSystem(this);
         this.physics = new BeePhysicsWorld();
         this.spatial = this.physics.hash;
+        this.pools = new Map();
+        this.bullets = this.createPool('bullet', {
+            create: () => new BeeBullet(),
+            reset: (bullet, x, y, vx, vy, width, height, textureKey, lifespan) => {
+                bullet.reset(x, y, vx, vy, width, height, textureKey, lifespan);
+            },
+            initial: 32,
+            max: 256
+        });
         this.time = new BeeTime();
         this.save = new BeeSaveStore();
         this.debug = new BeeLadybug(this);
@@ -236,6 +246,35 @@ export class BeeEngine {
             this.debug.destroy();
         }
         if (this.physics) this.physics.clear();
+        if (this.pools) {
+            for (const pool of this.pools.values()) {
+                pool.clear();
+            }
+            this.pools.clear();
+        }
+        this.bullets = null;
+    }
+
+    createPool(name, options) {
+        const id = String(name ?? '');
+        if (!id) throw new Error('BeeEngine.createPool: name required');
+        const pool = options instanceof BeePool ? options : new BeePool(options);
+        this.pools.set(id, pool);
+        return pool;
+    }
+
+    pool(name) {
+        return this.pools.get(String(name ?? '')) || null;
+    }
+
+    spawn(name, ...args) {
+        const pool = this.pool(name);
+        if (!pool) return null;
+        const item = pool.acquire(...args);
+        if (item && typeof item.update === 'function') {
+            this.addEntity(item);
+        }
+        return item;
     }
 
     start(updateCallback, renderCallback) {
@@ -480,6 +519,7 @@ export {
     BEE_SHAPE,
     BEE_LAYER,
     BEE_SPATIAL_HASH_DEFAULTS,
+    BEE_POOL_DEFAULTS,
     BeeTime,
     BeeTransform,
     BeeLadybug,
@@ -511,6 +551,7 @@ export {
     BeeRigidBody,
     BeePhysicsWorld,
     BeeSpatialHash,
+    BeePool,
     BeeSpriteSheet,
     BeeAnimatedSprite,
     BeeTilemapLoader,

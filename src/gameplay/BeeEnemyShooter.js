@@ -52,9 +52,11 @@ export class BeeEnemyShooter extends BeeEnemy {
         const bulletX = this.worldX + this.width / 2 - 4;
         const bulletY = this.worldY + this.height / 2 - 4;
 
-        const bullet = new BeeBullet(bulletX, bulletY, bulletVx, bulletVy, 10, 10);
+        const bullet = engine && engine.bullets
+            ? engine.bullets.acquire(bulletX, bulletY, bulletVx, bulletVy, 10, 10)
+            : new BeeBullet(bulletX, bulletY, bulletVx, bulletVy, 10, 10);
 
-        if (engine && typeof engine.addEntity === 'function') {
+        if (bullet && engine && typeof engine.addEntity === 'function') {
             engine.addEntity(bullet);
         }
     }
